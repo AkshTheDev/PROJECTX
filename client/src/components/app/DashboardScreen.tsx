@@ -5,6 +5,32 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
+// Chart.js Imports
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+import { Line, Bar } from 'react-chartjs-2';
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+);
+
 // MUI Imports
 import Box from '@mui/material/Box';
 import Drawer from '@mui/material/Drawer';
@@ -23,7 +49,6 @@ import Badge from '@mui/material/Badge';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
-import Grid from '@mui/material/Grid'; // Using Grid v2 syntax
 import Paper from '@mui/material/Paper';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -45,12 +70,10 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import SearchIcon from '@mui/icons-material/Search';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
-import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import HourglassTopIcon from '@mui/icons-material/HourglassTop';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import MenuIcon from '@mui/icons-material/Menu'; // For mobile drawer toggle
 
 const drawerWidth = 256; // Width of the sidebar
@@ -97,10 +120,18 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
 
 // Define types for the data (same as before)
 interface DashboardStats {
-  totalInvoices: number;
-  pendingPayments: number;
-  gstCollected: number;
-  gstPaid: number;
+  invoiceCount: number;
+  totalInvoiced: number;
+  totalPaid: number;
+  totalOutstanding: number;
+  totalCGST: number;
+  totalSGST: number;
+  totalIGST: number;
+  monthlyData: {
+    month: string;
+    revenue: number;
+    invoiceCount: number;
+  }[];
 }
 
 interface RecentInvoice {
@@ -114,13 +145,8 @@ interface RecentInvoice {
 
 // API fetching functions - Updated to match server endpoints
 const fetchDashboardStats = async (): Promise<DashboardStats> => {
-  const { data } = await api.get('/invoices/summary');
-  return {
-    totalInvoices: data.invoiceCount || 0,
-    pendingPayments: data.totalOutstanding || 0,
-    gstCollected: (data.totalCGST || 0) + (data.totalSGST || 0) + (data.totalIGST || 0),
-    gstPaid: data.totalPaid || 0
-  };
+  const { data } = await api.get('/invoices/dashboard-stats');
+  return data;
 };
 
 const fetchRecentInvoices = async (): Promise<RecentInvoice[]> => {
@@ -364,53 +390,145 @@ export function DashboardScreen() {
           </Box>
 
           {/* Stats Grid */}
-          <Grid container spacing={3} sx={{ mb: 3 }}>
-            <Grid item xs={12} sm={6} md={4}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 3 }}>
+            <Box sx={{ flex: '1 1 300px', minWidth: 0 }}>
               <StatCard
                 title="Total Invoices"
-                value={stats?.totalInvoices.toLocaleString() ?? '...'}
+                value={stats?.invoiceCount.toLocaleString() ?? '...'}
                 icon={<TrendingUpIcon color="success" />}
                 isLoading={isLoadingStats}
               />
-            </Grid>
-            <Grid item xs={12} sm={6} md={4}>
+            </Box>
+            <Box sx={{ flex: '1 1 300px', minWidth: 0 }}>
               <StatCard
                 title="Pending Payments"
-                value={`₹${stats?.pendingPayments.toLocaleString() ?? '...'}`}
+                value={`₹${stats?.totalOutstanding.toLocaleString() ?? '...'}`}
                 icon={<HourglassTopIcon color="warning" />}
                 isLoading={isLoadingStats}
               />
-            </Grid>
-            <Grid item xs={12} sm={6} md={4}>
+            </Box>
+            <Box sx={{ flex: '1 1 300px', minWidth: 0 }}>
               <StatCard
-                title="GST Collected/Paid"
-                value={`₹${stats?.gstCollected.toLocaleString() ?? '...'} / ₹${stats?.gstPaid.toLocaleString() ?? '...'}`}
+                title="GST Collected"
+                value={`₹${((stats?.totalCGST || 0) + (stats?.totalSGST || 0) + (stats?.totalIGST || 0)).toLocaleString()}`}
                 icon={<AccountBalanceIcon color="primary" />}
                 isLoading={isLoadingStats}
               />
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
 
-          {/* Invoice Summary Card */}
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Typography variant="h6" component="div" fontWeight="bold">
-                Invoice Summary - Last 30 Days
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mt: 1 }}>
-                <Typography variant="h4" component="p" fontWeight="bold">
-                   {isLoadingStats ? <Skeleton width={150} /> : '₹1,20,000'} {/* Example static data */}
-                </Typography>
-                <Typography color="success.main" sx={{ display: 'flex', alignItems: 'center', fontSize: '0.875rem' }}>
-                  <ArrowUpwardIcon sx={{ fontSize: '1rem', mr: 0.5 }}/> 10% {/* Example static data */}
-                </Typography>
-              </Box>
-               {/* TODO: Add Chart component here */}
-              <Box sx={{ height: 240, mt: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'text.secondary', border: '1px dashed grey' }}>
-                Chart Placeholder
-              </Box>
-            </CardContent>
-          </Card>
+          {/* Invoice Summary Card with Charts */}
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 3 }}>
+            {/* Revenue Chart */}
+            <Box sx={{ flex: '1 1 500px', minWidth: 0 }}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" component="div" fontWeight="bold" mb={2}>
+                    Revenue Trend (Last 6 Months)
+                  </Typography>
+                  {isLoadingStats ? (
+                    <Skeleton variant="rectangular" height={240} />
+                  ) : stats?.monthlyData && stats.monthlyData.length > 0 ? (
+                    <Box sx={{ height: 240 }}>
+                      <Line
+                        data={{
+                          labels: stats.monthlyData.map(d => {
+                            const [year, month] = d.month.split('-');
+                            const date = new Date(parseInt(year), parseInt(month) - 1);
+                            return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                          }),
+                          datasets: [{
+                            label: 'Revenue (₹)',
+                            data: stats.monthlyData.map(d => d.revenue),
+                            borderColor: 'rgb(75, 192, 192)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            tension: 0.1
+                          }]
+                        }}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: {
+                            legend: {
+                              position: 'top' as const,
+                            },
+                          },
+                          scales: {
+                            y: {
+                              beginAtZero: true,
+                              ticks: {
+                                callback: function(value) {
+                                  return '₹' + value.toLocaleString();
+                                }
+                              }
+                            }
+                          }
+                        }}
+                      />
+                    </Box>
+                  ) : (
+                    <Box sx={{ height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'text.secondary' }}>
+                      No data available
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
+            </Box>
+
+            {/* Invoice Count Chart */}
+            <Box sx={{ flex: '1 1 500px', minWidth: 0 }}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" component="div" fontWeight="bold" mb={2}>
+                    Invoice Count (Last 6 Months)
+                  </Typography>
+                  {isLoadingStats ? (
+                    <Skeleton variant="rectangular" height={240} />
+                  ) : stats?.monthlyData && stats.monthlyData.length > 0 ? (
+                    <Box sx={{ height: 240 }}>
+                      <Bar
+                        data={{
+                          labels: stats.monthlyData.map(d => {
+                            const [year, month] = d.month.split('-');
+                            const date = new Date(parseInt(year), parseInt(month) - 1);
+                            return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                          }),
+                          datasets: [{
+                            label: 'Invoice Count',
+                            data: stats.monthlyData.map(d => d.invoiceCount),
+                            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                            borderColor: 'rgb(54, 162, 235)',
+                            borderWidth: 1
+                          }]
+                        }}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: {
+                            legend: {
+                              position: 'top' as const,
+                            },
+                          },
+                          scales: {
+                            y: {
+                              beginAtZero: true,
+                              ticks: {
+                                stepSize: 1
+                              }
+                            }
+                          }
+                        }}
+                      />
+                    </Box>
+                  ) : (
+                    <Box sx={{ height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'text.secondary' }}>
+                      No data available
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
+            </Box>
+          </Box>
 
           {/* Recent Invoices Table */}
           <Card>

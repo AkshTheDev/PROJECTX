@@ -175,3 +175,45 @@ export const getMonthlyGstReport = async (req: AuthRequest, res: Response) => {
         res.status(500).json({ message: 'Server error fetching monthly GST report' });
     }
 };
+
+// --- Get GST Detailed Invoices (for report table) ---
+export const getGstDetails = async (req: AuthRequest, res: Response) => {
+    const { startDate, endDate, search } = req.query;
+
+    try {
+        const matchStage: any = { business: new mongoose.Types.ObjectId(req.businessId) };
+
+        if (startDate || endDate) {
+            matchStage.invoiceDate = {};
+            if (startDate) matchStage.invoiceDate.$gte = new Date(startDate as string);
+            if (endDate) matchStage.invoiceDate.$lte = new Date(endDate as string);
+        }
+
+        // Basic search on invoiceNumber; could be extended to client name via lookup or populate + filter
+        if (search && typeof search === 'string' && search.trim().length > 0) {
+            matchStage.invoiceNumber = { $regex: search.trim(), $options: 'i' };
+        }
+
+        const invoices = await Invoice.find(matchStage)
+            .populate('client', 'name')
+            .sort({ invoiceDate: -1 })
+            .select('invoiceNumber invoiceDate subtotal cgstAmount sgstAmount igstAmount total client');
+
+        const rows = invoices.map((inv) => ({
+            id: (inv as any)._id.toString(),
+            invoiceNumber: (inv as any).invoiceNumber,
+            date: (inv as any).invoiceDate,
+            customer: ((inv as any).client?.name) || 'Unknown',
+            taxableAmount: (inv as any).subtotal || 0,
+            cgst: (inv as any).cgstAmount || 0,
+            sgst: (inv as any).sgstAmount || 0,
+            igst: (inv as any).igstAmount || 0,
+            total: (inv as any).total || 0,
+        }));
+
+        res.json(rows);
+    } catch (error) {
+        console.error('Get GST Details Error:', error);
+        res.status(500).json({ message: 'Server error fetching GST details' });
+    }
+};

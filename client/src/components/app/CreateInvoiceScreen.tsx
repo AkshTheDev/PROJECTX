@@ -1,14 +1,14 @@
 // client/src/components/app/CreateInvoiceScreen.tsx
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
+// import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
 
 // MUI Imports
 import Box from '@mui/material/Box';
 import Drawer from '@mui/material/Drawer';
-import AppBar from '@mui/material/AppBar';
+// import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
@@ -18,10 +18,10 @@ import ListItemText from '@mui/material/ListItemText';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import Paper from '@mui/material/Paper';
-import Grid from '@mui/material/Grid';
+import Grid from '@mui/material/GridLegacy';
 import TextField from '@mui/material/TextField';
-import TextareaAutosize from '@mui/material/TextareaAutosize'; // Or use TextField multiline
-import Select, { type SelectChangeEvent } from '@mui/material/Select';
+// import TextareaAutosize from '@mui/material/TextareaAutosize'; // Or use TextField multiline
+import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -45,7 +45,7 @@ import Inventory2Icon from '@mui/icons-material/Inventory2'; // Replaces Package
 import AssessmentIcon from '@mui/icons-material/Assessment'; // Replaces BarChart
 import SettingsIcon from '@mui/icons-material/Settings';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline'; // Replaces HelpCircle
-import EmailIcon from '@mui/icons-material/Email'; // Replaces Mail
+// import EmailIcon from '@mui/icons-material/Email'; // Replaces Mail
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'; // Replaces PlusCircle
 import DeleteIcon from '@mui/icons-material/Delete'; // For removing items
 import Avatar from '@mui/material/Avatar'; // <-- ADD THIS LINE
@@ -73,7 +73,7 @@ interface Client {
 export function CreateInvoiceScreen() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  // const { user } = useAuth();
   
   // State for form fields
   const [selectedClientId, setSelectedClientId] = useState<string>('');
@@ -85,14 +85,15 @@ export function CreateInvoiceScreen() {
   const [invoiceDate, setInvoiceDate] = useState<Date | null>(new Date());
   const [dueDate, setDueDate] = useState<Date | null>(new Date(Date.now() + 15 * 24 * 60 * 60 * 1000)); // 15 days from now
   const [notes, setNotes] = useState('');
-  const [status, setStatus] = useState<'DRAFT' | 'PENDING'>('DRAFT');
+  // const [status, setStatus] = useState<'DRAFT' | 'PENDING'>('DRAFT');
   const [showSuccess, setShowSuccess] = useState(false);
   const [showError, setShowError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   // State for invoice items
   const [items, setItems] = useState<InvoiceItem[]>([
-    { id: 1, description: '', hsnSac: '', quantity: 1, rate: 0, gstRate: 18, amount: 0 },
+    // Start with sane defaults (rate 1) so totals aren't stuck at 0 if user forgets to type immediately
+    { id: 1, description: '', hsnSac: '', quantity: 1, rate: 1, gstRate: 18, amount: 1 * 1 * (1 + 18 / 100) },
   ]);
 
   // Fetch clients for dropdown
@@ -141,8 +142,8 @@ export function CreateInvoiceScreen() {
   const handleAddItem = () => {
     setItems([
       ...items,
-      // Add a new blank item object
-      { id: Date.now(), description: '', hsnSac: '', quantity: 1, rate: 0, gstRate: 18, amount: 0 },
+      // Add a new blank item object with better defaults
+      { id: Date.now(), description: '', hsnSac: '', quantity: 1, rate: 1, gstRate: 18, amount: 1 * 1 * (1 + 18 / 100) },
     ]);
   };
 
@@ -458,18 +459,26 @@ export function CreateInvoiceScreen() {
                               </TableRow>
                           </TableHead>
                           <TableBody>
-                              {items.map((item, index) => (
-                                  <TableRow key={item.id}>
-                                      <TableCell sx={{ py: 0.5 }}>
-                                          <TextField
-                                              variant="standard" // Less intrusive look in table
-                                              fullWidth
-                                              size="small"
-                                              value={item.description}
-                                              onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                                              InputProps={{ disableUnderline: true }}
-                                          />
-                                      </TableCell>
+                {items.map((item, index) => {
+                  const descError = !item.description || item.description.trim().length === 0;
+                  const qtyError = !Number.isFinite(item.quantity) || item.quantity <= 0;
+                  const rateError = !Number.isFinite(item.rate) || item.rate <= 0;
+                  return (
+                  <TableRow key={item.id}>
+                    <TableCell sx={{ py: 0.5 }}>
+                      <TextField
+                        variant="standard" // Less intrusive look in table
+                        fullWidth
+                        size="small"
+                        required
+                        error={descError}
+                        helperText={descError ? 'Description is required' : ' '}
+                        value={item.description}
+                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                        InputProps={{ disableUnderline: true }}
+                        placeholder="Describe the item or service"
+                      />
+                    </TableCell>
                                        <TableCell sx={{ py: 0.5 }}>
                                           <TextField
                                               variant="standard"
@@ -480,27 +489,33 @@ export function CreateInvoiceScreen() {
                                               InputProps={{ disableUnderline: true }}
                                           />
                                       </TableCell>
+                    <TableCell sx={{ py: 0.5 }}>
+                      <TextField
+                        variant="standard"
+                        fullWidth
+                        size="small"
+                        type="number"
+                        value={item.quantity}
+                        onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                        InputProps={{ disableUnderline: true }}
+                        inputProps={{ min: 1, step: 1 }}
+                        error={qtyError}
+                        helperText={qtyError ? 'Quantity must be > 0' : ' '}
+                      />
+                    </TableCell>
                                       <TableCell sx={{ py: 0.5 }}>
-                                          <TextField
-                                              variant="standard"
-                                              fullWidth
-                                              size="small"
-                                              type="number"
-                                              value={item.quantity}
-                                              onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
-                                              InputProps={{ disableUnderline: true, inputProps: { min: 0 } }}
-                                          />
-                                      </TableCell>
-                                      <TableCell sx={{ py: 0.5 }}>
-                                           <TextField
-                                              variant="standard"
-                                              fullWidth
-                                              size="small"
-                                              type="number"
-                                              value={item.rate}
-                                              onChange={(e) => handleItemChange(index, 'rate', e.target.value)}
-                                              InputProps={{ disableUnderline: true, inputProps: { min: 0 } }}
-                                          />
+                       <TextField
+                        variant="standard"
+                        fullWidth
+                        size="small"
+                        type="number"
+                        value={item.rate}
+                        onChange={(e) => handleItemChange(index, 'rate', e.target.value)}
+                        InputProps={{ disableUnderline: true }}
+                        inputProps={{ min: 0.01, step: 0.01 }}
+                        error={rateError}
+                        helperText={rateError ? 'Rate must be > 0' : ' '}
+                      />
                                       </TableCell>
                                       <TableCell sx={{ py: 0.5 }}>
                                           <Select
@@ -523,7 +538,7 @@ export function CreateInvoiceScreen() {
                                           </IconButton>
                                       </TableCell>
                                   </TableRow>
-                              ))}
+                              )})}
                           </TableBody>
                       </Table>
                    </TableContainer>

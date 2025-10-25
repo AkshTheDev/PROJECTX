@@ -24,11 +24,11 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
 
 // --- Update User Profile ---
 export const updateUserProfile = async (req: AuthRequest, res: Response) => {
-    const { fullName, phone, notificationsOn } = req.body;
+    const { fullName, phone, notificationsOn, avatarUrl } = req.body;
     try {
         const user = await User.findByIdAndUpdate(
             req.userId,
-            { fullName, phone, notificationsOn },
+            { fullName, phone, notificationsOn, avatarUrl },
             { new: true, runValidators: true } // Return updated doc, run schema validators
         ).select('-passwordHash');
 
@@ -45,12 +45,12 @@ export const updateUserProfile = async (req: AuthRequest, res: Response) => {
 
 // --- Update Business Profile ---
 export const updateBusinessProfile = async (req: AuthRequest, res: Response) => {
-    const { name, address, gstin } = req.body;
+    const { name, address, gstin, logoUrl } = req.body;
     try {
         // Find business by the businessId attached in middleware
         const business = await Business.findByIdAndUpdate(
             req.businessId,
-            { name, address, gstin },
+            { name, address, gstin, logoUrl },
             { new: true, runValidators: true }
         );
 

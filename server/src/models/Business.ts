@@ -5,6 +5,7 @@ export interface IBusiness extends Document {
   address?: string;
   gstin?: string;
   user: mongoose.Schema.Types.ObjectId;
+  logoUrl?: string;
 }
 
 const BusinessSchema: Schema = new Schema({
@@ -12,6 +13,7 @@ const BusinessSchema: Schema = new Schema({
   address: { type: String },
   gstin: { type: String },
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
+  logoUrl: { type: String },
 }, { timestamps: true });
 
 export default mongoose.model<IBusiness>('Business', BusinessSchema);

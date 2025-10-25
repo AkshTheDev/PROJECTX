@@ -14,7 +14,7 @@ import Button from '@mui/material/Button';
 import Avatar from '@mui/material/Avatar';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
-import Grid from '@mui/material/Grid';
+// import Grid from '@mui/material/Grid';
 import Paper from '@mui/material/Paper';
 import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
@@ -57,23 +57,39 @@ interface ReportDetail {
 }
 
 // API fetching functions (Example endpoints, adjust as needed)
-const fetchGstSummary = async (/* dateRange */): Promise<GstSummaryStats> => {
-  // const { data } = await api.get('/reports/gst/summary', { params: { dateRange } });
-  // Mock data for now:
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  return { totalSales: 125430.00, totalGstCollected: 22577.40, totalInputTaxCredit: 15230.50, netGstPayable: 7346.90 };
+const fetchGstSummary = async (start?: Date | null, end?: Date | null): Promise<GstSummaryStats> => {
+  const params: any = {};
+  if (start) params.startDate = start.toISOString();
+  if (end) params.endDate = end.toISOString();
+  const { data } = await api.get('/gst-reports/summary', { params });
+  const totalGstCollected = (data.totalGST ?? 0) as number;
+  const totalInputTaxCredit = 0; // No purchase data available; adjust when purchases are added
+  const netGstPayable = totalGstCollected - totalInputTaxCredit;
+  return {
+    totalSales: data.totalSales ?? 0,
+    totalGstCollected,
+    totalInputTaxCredit,
+    netGstPayable,
+  };
 };
 
-const fetchGstDetails = async (/* dateRange, searchQuery */): Promise<ReportDetail[]> => {
-  // const { data } = await api.get('/reports/gst/details', { params: { dateRange, searchQuery } });
-  // Mock data for now:
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  return [
-    { id: '1', invoiceNumber: 'INV-00123', date: '2024-07-28', customer: 'ABC Corp', taxableAmount: 10000.00, cgst: 900.00, sgst: 900.00, igst: 0.00, total: 11800.00 },
-    { id: '2', invoiceNumber: 'INV-00124', date: '2024-07-27', customer: 'XYZ Pvt Ltd', taxableAmount: 15500.00, cgst: 0.00, sgst: 0.00, igst: 2790.00, total: 18290.00 },
-    { id: '3', invoiceNumber: 'INV-00125', date: '2024-07-25', customer: 'Sunrise Industries', taxableAmount: 5250.00, cgst: 472.50, sgst: 472.50, igst: 0.00, total: 6195.00 },
-    { id: '4', invoiceNumber: 'INV-00126', date: '2024-07-22', customer: 'Evergreen Co.', taxableAmount: 21000.00, cgst: 1890.00, sgst: 1890.00, igst: 0.00, total: 24780.00 },
-  ];
+const fetchGstDetails = async (start?: Date | null, end?: Date | null, search?: string): Promise<ReportDetail[]> => {
+  const params: any = {};
+  if (start) params.startDate = start.toISOString();
+  if (end) params.endDate = end.toISOString();
+  if (search && search.trim().length > 0) params.search = search.trim();
+  const { data } = await api.get('/gst-reports/details', { params });
+  return (data || []).map((row: any) => ({
+    id: row.id,
+    invoiceNumber: row.invoiceNumber,
+    date: new Date(row.date).toLocaleDateString(),
+    customer: row.customer,
+    taxableAmount: row.taxableAmount,
+    cgst: row.cgst,
+    sgst: row.sgst,
+    igst: row.igst,
+    total: row.total,
+  }));
 };
 
 // Helper component for Summary Cards - Enhanced for specific styling
@@ -98,18 +114,29 @@ export function GstReportsScreen() {
   // State for mobile header menu (if needed)
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // Fetch profile for real avatar/logo
+  const { data: profile } = useQuery({
+    queryKey: ['profile'],
+    queryFn: async () => {
+      const { data } = await api.get('/profile');
+      return data as { user: { fullName?: string; email: string; avatarUrl?: string }, business: { name: string; logoUrl?: string } };
+    },
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
   // Fetch Summary
   const { data: summary, isLoading: isLoadingSummary } = useQuery({
-    queryKey: ['gstSummary', startDate, endDate], // Refetch when dates change
-    queryFn: () => fetchGstSummary(/* pass date range */),
-    enabled: !!startDate && !!endDate, // Only fetch when both dates are selected (optional)
+    queryKey: ['gstSummary', startDate?.toISOString(), endDate?.toISOString()],
+    queryFn: () => fetchGstSummary(startDate, endDate),
+    enabled: !!startDate && !!endDate,
   });
 
   // Fetch Details
   const { data: details, isLoading: isLoadingDetails } = useQuery({
-    queryKey: ['gstDetails', startDate, endDate, searchQuery], // Refetch on changes
-    queryFn: () => fetchGstDetails(/* pass range and search */),
-     enabled: !!startDate && !!endDate, // Only fetch when both dates are selected (optional)
+    queryKey: ['gstDetails', startDate?.toISOString(), endDate?.toISOString(), searchQuery],
+    queryFn: () => fetchGstDetails(startDate, endDate, searchQuery),
+    enabled: !!startDate && !!endDate,
   });
 
    const handleDrawerToggle = () => {
@@ -166,12 +193,14 @@ export function GstReportsScreen() {
             >
               <MenuIcon />
             </IconButton>
-             <Button variant="contained" size="medium">New Invoice</Button>
+             {/* <Button variant="contained" size="medium">New Invoice</Button> */}
             <Avatar
-              alt="User Avatar"
-              src="https://via.placeholder.com/40"
+              alt={profile?.business?.name || profile?.user?.fullName || profile?.user?.email || 'User'}
+              src={profile?.business?.logoUrl || profile?.user?.avatarUrl || undefined}
               sx={{ width: 40, height: 40 }}
-            />
+            >
+              {(profile?.business?.name?.charAt(0) || profile?.user?.fullName?.charAt(0) || profile?.user?.email?.charAt(0) || 'U')}
+            </Avatar>
           </Box>
         </Toolbar>
       </AppBar>
@@ -202,26 +231,21 @@ export function GstReportsScreen() {
             <Typography variant="h6" component="h2" fontWeight="bold" sx={{ mb: 2 }}>
               Select Date Range
             </Typography>
-            <Grid container spacing={2} alignItems="center">
-               <Grid >
-                 <DatePicker
-                   label="Start Date"
-                   value={startDate}
-                   onChange={(newValue) => setStartDate(newValue)}
-                   slotProps={{ textField: { size: 'small', fullWidth: true } }}
-                 />
-               </Grid>
-               <Grid >
-                 <DatePicker
-                   label="End Date"
-                   value={endDate}
-                   onChange={(newValue) => setEndDate(newValue)}
-                   slotProps={{ textField: { size: 'small', fullWidth: true } }}
-                   minDate={startDate ?? undefined}
-                 />
-               </Grid>
-               {/* Optional: Add Apply button if fetching is not automatic */}
-            </Grid>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+              <DatePicker
+                label="Start Date"
+                value={startDate}
+                onChange={(newValue) => setStartDate(newValue)}
+                slotProps={{ textField: { size: 'small' } }}
+              />
+              <DatePicker
+                label="End Date"
+                value={endDate}
+                onChange={(newValue) => setEndDate(newValue)}
+                slotProps={{ textField: { size: 'small' } }}
+                minDate={startDate ?? undefined}
+              />
+            </Box>
           </Paper>
 
           {/* GST Summary Card */}
@@ -229,48 +253,40 @@ export function GstReportsScreen() {
             <Typography variant="h6" component="h2" fontWeight="bold" sx={{ mb: 2 }}>
               GST Summary for Selected Period
             </Typography>
-             <Grid container spacing={2}>
-               <Grid >
-                 <SummaryCard
-                   title="Total Sales"
-                   value={formatCurrency(summary?.totalSales ?? 0)}
-                   bgColor="info.lightest" // Use theme colors or direct values
-                   textColor="info.dark"
-                   valueColor="info.darker"
-                   isLoading={isLoadingSummary}
-                 />
-               </Grid>
-               <Grid >
-                 <SummaryCard
-                   title="Total GST Collected"
-                   value={formatCurrency(summary?.totalGstCollected ?? 0)}
-                    bgColor="success.lightest"
-                    textColor="success.dark"
-                    valueColor="success.darker"
-                    isLoading={isLoadingSummary}
-                 />
-               </Grid>
-               <Grid >
-                 <SummaryCard
-                   title="Total Input Tax Credit"
-                   value={formatCurrency(summary?.totalInputTaxCredit ?? 0)}
-                    bgColor="warning.lightest"
-                    textColor="warning.dark"
-                    valueColor="warning.darker"
-                    isLoading={isLoadingSummary}
-                 />
-               </Grid>
-               <Grid >
-                 <SummaryCard
-                   title="Net GST Payable"
-                   value={formatCurrency(summary?.netGstPayable ?? 0)}
-                    bgColor="error.lightest"
-                    textColor="error.dark"
-                    valueColor="error.darker"
-                    isLoading={isLoadingSummary}
-                 />
-               </Grid>
-             </Grid>
+             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 2 }}>
+               <SummaryCard
+                 title="Total Sales"
+                 value={formatCurrency(summary?.totalSales ?? 0)}
+                 bgColor="info.lightest"
+                 textColor="info.dark"
+                 valueColor="info.darker"
+                 isLoading={isLoadingSummary}
+               />
+               <SummaryCard
+                 title="Total GST Collected"
+                 value={formatCurrency(summary?.totalGstCollected ?? 0)}
+                 bgColor="success.lightest"
+                 textColor="success.dark"
+                 valueColor="success.darker"
+                 isLoading={isLoadingSummary}
+               />
+               <SummaryCard
+                 title="Total Input Tax Credit"
+                 value={formatCurrency(summary?.totalInputTaxCredit ?? 0)}
+                 bgColor="warning.lightest"
+                 textColor="warning.dark"
+                 valueColor="warning.darker"
+                 isLoading={isLoadingSummary}
+               />
+               <SummaryCard
+                 title="Net GST Payable"
+                 value={formatCurrency(summary?.netGstPayable ?? 0)}
+                 bgColor="error.lightest"
+                 textColor="error.dark"
+                 valueColor="error.darker"
+                 isLoading={isLoadingSummary}
+               />
+             </Box>
           </Paper>
 
           {/* Detailed Report Card */}

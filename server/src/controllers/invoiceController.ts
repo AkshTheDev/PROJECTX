@@ -204,3 +204,103 @@ export const deleteInvoice = async (req: AuthRequest, res: Response) => {
         res.status(500).json({ message: 'Server error deleting invoice' });
     }
 };
+
+// --- Get Dashboard Stats ---
+export const getDashboardStats = async (req: AuthRequest, res: Response) => {
+    try {
+        // Get overall stats
+        const stats = await Invoice.aggregate([
+            { $match: { business: new mongoose.Types.ObjectId(req.businessId) } },
+            {
+                $group: {
+                    _id: null,
+                    invoiceCount: { $sum: 1 },
+                    totalInvoiced: { $sum: '$total' },
+                    totalPaid: {
+                        $sum: { $cond: [{ $eq: ['$status', 'PAID'] }, '$total', 0] }
+                    },
+                    totalCGST: { $sum: '$cgstAmount' },
+                    totalSGST: { $sum: '$sgstAmount' },
+                    totalIGST: { $sum: '$igstAmount' }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    invoiceCount: 1,
+                    totalInvoiced: 1,
+                    totalPaid: 1,
+                    totalOutstanding: { $subtract: ['$totalInvoiced', '$totalPaid'] },
+                    totalCGST: 1,
+                    totalSGST: 1,
+                    totalIGST: 1
+                }
+            }
+        ]);
+
+        // Get monthly data for the last 6 months
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+        const monthlyData = await Invoice.aggregate([
+            {
+                $match: {
+                    business: new mongoose.Types.ObjectId(req.businessId),
+                    invoiceDate: { $gte: sixMonthsAgo }
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        year: { $year: '$invoiceDate' },
+                        month: { $month: '$invoiceDate' }
+                    },
+                    revenue: { $sum: '$total' },
+                    invoiceCount: { $sum: 1 }
+                }
+            },
+            {
+                $sort: { '_id.year': 1, '_id.month': 1 }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    month: {
+                        $concat: [
+                            { $toString: '$_id.year' },
+                            '-',
+                            {
+                                $cond: [
+                                    { $lt: ['$_id.month', 10] },
+                                    { $concat: ['0', { $toString: '$_id.month' }] },
+                                    { $toString: '$_id.month' }
+                                ]
+                            }
+                        ]
+                    },
+                    revenue: 1,
+                    invoiceCount: 1
+                }
+            }
+        ]);
+
+        const summary = stats[0] || {
+            invoiceCount: 0,
+            totalInvoiced: 0,
+            totalPaid: 0,
+            totalOutstanding: 0,
+            totalCGST: 0,
+            totalSGST: 0,
+            totalIGST: 0
+        };
+
+        res.json({
+            ...summary,
+            monthlyData
+        });
+
+    } catch (error) {
+        console.error("Get Dashboard Stats Error:", error);
+        res.status(500).json({ message: 'Server error fetching dashboard stats' });
+    }
+};

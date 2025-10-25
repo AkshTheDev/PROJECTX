@@ -48,34 +48,30 @@ interface BusinessProfile {
   name: string;
   address: string;
   gstin: string;
+  logoUrl?: string; // Add logoUrl field
 }
 
-// API functions (Replace mocks with actual API calls)
+// API functions - Using real API calls
 const fetchUserProfile = async (): Promise<UserProfile> => {
-  // const { data } = await api.get('/profile'); // Example: Combined endpoint
-  // // Process data if API returns combined user & business info
-  // return data.user;
-  // Mock Data:
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  const { data } = await api.get('/profile');
   return {
-      fullName: 'Rakesh Sharma',
-      email: 'rakesh.sharma@example.com',
-      phone: '+91 98765 43210',
-      avatarUrl: 'https://via.placeholder.com/96', // Placeholder image
-      notificationsOn: true,
+    id: data.user._id,
+    fullName: data.user.fullName || '',
+    email: data.user.email || '',
+    phone: data.user.phone || '',
+    avatarUrl: data.user.avatarUrl || '',
+    notificationsOn: data.user.notificationsOn ?? true,
   };
 };
 
 const fetchBusinessProfile = async (): Promise<BusinessProfile> => {
-  // const { data } = await api.get('/profile'); // Example: Combined endpoint
-  // // Process data if API returns combined user & business info
-  // return data.business;
-   // Mock Data:
-   await new Promise(resolve => setTimeout(resolve, 1200));
+  const { data } = await api.get('/profile');
   return {
-      name: 'Sharma Enterprises',
-      address: '123, Business Avenue, Commerce City, Mumbai, 400001',
-      gstin: '27ABCDE1234F1Z5',
+    id: data.business._id,
+    name: data.business.name || '',
+    address: data.business.address || '',
+    gstin: data.business.gstin || '',
+    logoUrl: data.business.logoUrl || '',
   };
 };
 
@@ -104,6 +100,7 @@ export function ProfileScreen() {
   const [businessName, setBusinessName] = useState('');
   const [businessAddress, setBusinessAddress] = useState('');
   const [gstin, setGstin] = useState('');
+  const [businessLogoUrl, setBusinessLogoUrl] = useState('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   // Fetch User Profile Data
@@ -138,6 +135,7 @@ export function ProfileScreen() {
       setBusinessName(businessProfile.name || '');
       setBusinessAddress(businessProfile.address || '');
       setGstin(businessProfile.gstin || '');
+      setBusinessLogoUrl(businessProfile.logoUrl || '');
     }
   }, [businessProfile]); // Re-run if businessProfile data changes
 
@@ -145,8 +143,8 @@ export function ProfileScreen() {
   const mutation = useMutation({
     mutationFn: async () => {
         setSaveStatus('idle');
-        const userUpdateData: Partial<UserProfile> = { fullName, phone, notificationsOn };
-        const businessUpdateData: Partial<BusinessProfile> = { name: businessName, address: businessAddress, gstin };
+        const userUpdateData: Partial<UserProfile> = { fullName, phone, notificationsOn, avatarUrl };
+        const businessUpdateData: Partial<BusinessProfile> = { name: businessName, address: businessAddress, gstin, logoUrl: businessLogoUrl };
         // Use Promise.allSettled to handle potential individual failures if needed
         await Promise.all([
             updateUserProfileAPI(userUpdateData),
@@ -166,7 +164,7 @@ export function ProfileScreen() {
     },
   });
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: string) => {
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: string) => {
     setActiveSection(newValue);
     const element = document.getElementById(newValue);
     if (element) {

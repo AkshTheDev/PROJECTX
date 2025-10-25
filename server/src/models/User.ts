@@ -6,6 +6,7 @@ export interface IUser extends Document {
   fullName?: string;
   phone?: string;
   notificationsOn: boolean;
+  avatarUrl?: string;
 }
 
 const UserSchema: Schema = new Schema({
@@ -14,6 +15,7 @@ const UserSchema: Schema = new Schema({
   fullName: { type: String },
   phone: { type: String },
   notificationsOn: { type: Boolean, default: true },
+  avatarUrl: { type: String },
 }, { timestamps: true });
 
 export default mongoose.model<IUser>('User', UserSchema);

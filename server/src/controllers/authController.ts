@@ -52,6 +52,13 @@ export const login = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
+    // Ensure a Business document exists for this user to support protected routes
+    // Some older accounts may have been created before businesses were auto-created
+    const existingBusiness = await Business.findOne({ user: user._id });
+    if (!existingBusiness) {
+      await Business.create({ name: user.fullName || 'My Business', user: user._id });
+    }
+
     const token = jwt.sign(
       { userId: user._id }, // Use _id from MongoDB
       process.env.JWT_SECRET as string,

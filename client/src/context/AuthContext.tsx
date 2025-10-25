@@ -7,6 +7,7 @@
     id: string;
     email: string;
     fullName?: string;
+    avatarUrl?: string;
   }
 
   interface AuthContextType {
@@ -24,6 +25,13 @@
     const [token, setTokenState] = useState<string | null>(localStorage.getItem('token'));
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+
+    // Ensure axios has the Authorization header if a token exists on first load
+    useEffect(() => {
+      if (token) {
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      }
+    }, []);
 
     const setToken = (newToken: string | null) => {
       setTokenState(newToken);
