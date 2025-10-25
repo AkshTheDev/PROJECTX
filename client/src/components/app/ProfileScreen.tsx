@@ -1,264 +1,377 @@
-// src/components/ProfileScreen.tsx
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Switch } from "@/components/ui/switch";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Briefcase, Lock, Info } from "lucide-react";
+// client/src/components/app/ProfileScreen.tsx
+import React, { useState, useEffect } from 'react';
+import api from '@/lib/api'; // Assuming you'll fetch/save profile data later
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'; // Import useQueryClient
+
+// MUI Imports
+import Box from '@mui/material/Box';
+import List from '@mui/material/List';
+import ListItemButton from '@mui/material/ListItemButton';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Typography from '@mui/material/Typography';
+import Paper from '@mui/material/Paper';
+import Avatar from '@mui/material/Avatar';
+import Button from '@mui/material/Button';
+import TextField from '@mui/material/TextField';
+import Switch from '@mui/material/Switch';
+import Tooltip from '@mui/material/Tooltip';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import Grid from '@mui/material/Grid';
+import CircularProgress from '@mui/material/CircularProgress';
+import Alert from '@mui/material/Alert';
+import IconButton from '@mui/material/IconButton'; // Import IconButton
+import InputAdornment from '@mui/material/InputAdornment'; // Import InputAdornment
+import Divider from '@mui/material/Divider'; // Import Divider
+import Skeleton from '@mui/material/Skeleton'; // Import Skeleton
+
+// Icon Imports
+import PersonIcon from '@mui/icons-material/Person';
+import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
+import LockIcon from '@mui/icons-material/Lock';
+import InfoIcon from '@mui/icons-material/InfoOutlined';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+
+// Define types for profile data
+interface UserProfile {
+  id?: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  avatarUrl?: string;
+  notificationsOn: boolean;
+}
+
+interface BusinessProfile {
+  id?: string;
+  name: string;
+  address: string;
+  gstin: string;
+}
+
+// Example API functions
+const fetchUserProfile = async (): Promise<UserProfile> => {
+  // const { data } = await api.get('/profile/user');
+  await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate loading
+  return {
+      fullName: 'Rakesh Sharma',
+      email: 'rakesh.sharma@example.com',
+      phone: '+91 98765 43210',
+      avatarUrl: 'https://via.placeholder.com/96',
+      notificationsOn: true,
+  };
+};
+
+const fetchBusinessProfile = async (): Promise<BusinessProfile> => {
+  // const { data } = await api.get('/profile/business');
+   await new Promise(resolve => setTimeout(resolve, 1200)); // Simulate loading
+  return {
+      name: 'Sharma Enterprises',
+      address: '123, Business Avenue, Commerce City, Mumbai, 400001',
+      gstin: '27ABCDE1234F1Z5',
+  };
+};
+
+// Define Update Functions
+const updateUserProfileAPI = async (profileData: Partial<UserProfile>): Promise<UserProfile> => {
+    const { data } = await api.put('/profile/user', profileData);
+    return data;
+}
+const updateBusinessProfileAPI = async (profileData: Partial<BusinessProfile>): Promise<BusinessProfile> => {
+    const { data } = await api.put('/profile/business', profileData);
+    return data;
+}
 
 export function ProfileScreen() {
+  const [activeSection, setActiveSection] = useState('personal');
+  const queryClient = useQueryClient();
+
+  // State for form fields
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [notificationsOn, setNotificationsOn] = useState(true);
+  const [businessName, setBusinessName] = useState('');
+  const [businessAddress, setBusinessAddress] = useState('');
+  const [gstin, setGstin] = useState('');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+
+  // Fetch User Profile Data
+  const { data: userProfile, isLoading: isLoadingUser, isError: isErrorUser } = useQuery({
+    queryKey: ['userProfile'],
+    queryFn: fetchUserProfile,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    // onSuccess removed
+  });
+
+  // Fetch Business Profile Data
+  const { data: businessProfile, isLoading: isLoadingBusiness, isError: isErrorBusiness } = useQuery({
+    queryKey: ['businessProfile'],
+    queryFn: fetchBusinessProfile,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    // onSuccess removed
+  });
+
+  // Use useEffect to update state when data loads
+  useEffect(() => {
+    if (userProfile) {
+      setFullName(userProfile.fullName || '');
+      setEmail(userProfile.email || '');
+      setPhone(userProfile.phone || '');
+      setAvatarUrl(userProfile.avatarUrl || '');
+      setNotificationsOn(userProfile.notificationsOn);
+    }
+  }, [userProfile]);
+
+  useEffect(() => {
+    if (businessProfile) {
+      setBusinessName(businessProfile.name || '');
+      setBusinessAddress(businessProfile.address || '');
+      setGstin(businessProfile.gstin || '');
+    }
+  }, [businessProfile]);
+
+  // Mutation for saving changes
+  const mutation = useMutation({
+    mutationFn: async () => {
+        setSaveStatus('idle');
+        const userUpdateData: Partial<UserProfile> = { fullName, phone, notificationsOn };
+        const businessUpdateData: Partial<BusinessProfile> = { name: businessName, address: businessAddress, gstin };
+        const userUpdatePromise = updateUserProfileAPI(userUpdateData);
+        const businessUpdatePromise = updateBusinessProfileAPI(businessUpdateData);
+        await Promise.all([userUpdatePromise, businessUpdatePromise]);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['userProfile'] });
+      queryClient.invalidateQueries({ queryKey: ['businessProfile'] });
+       setSaveStatus('success');
+       setTimeout(() => setSaveStatus('idle'), 3000);
+    },
+    onError: (error) => {
+      console.error("Profile update failed:", error);
+      setSaveStatus('error');
+    },
+  });
+
+  const handleTabChange = (event: React.SyntheticEvent, newValue: string) => {
+    setActiveSection(newValue);
+    const element = document.getElementById(newValue);
+    if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const handleSaveChanges = () => {
+      mutation.mutate();
+  }
+
+  const isLoading = isLoadingUser || isLoadingBusiness;
+  const isError = isErrorUser || isErrorBusiness;
+
+  const navItems = [
+    { id: 'personal', text: 'Personal Information', icon: <PersonIcon /> },
+    { id: 'business', text: 'Business Information', icon: <BusinessCenterIcon /> },
+    { id: 'security', text: 'Security', icon: <LockIcon /> },
+  ];
+
+  if (isError) {
+      return <Alert severity="error">Failed to load profile data.</Alert>;
+  }
+
   return (
-    <div className="relative flex min-h-screen w-full flex-col bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark">
-      <div className="flex flex-1 justify-center py-5 px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col w-full max-w-6xl flex-1">
-          <div className="flex flex-col lg:flex-row gap-8">
-            {/* Side Navigation */}
-            <aside className="hidden lg:flex lg:w-1/4">
-              <div className="w-full">
-                <div className="flex flex-col gap-2">
-                  <Button
-                    variant="ghost"
-                    className="flex items-center justify-start gap-3 px-3 py-2 rounded-lg bg-primary/20 text-primary"
-                  >
-                    <User className="h-5 w-5" />
-                    <p className="text-sm font-medium">Personal Information</p>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    className="flex items-center justify-start gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                  >
-                    <Briefcase className="h-5 w-5" />
-                    <p className="text-sm font-medium">Business Information</p>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    className="flex items-center justify-start gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                  >
-                    <Lock className="h-5 w-5" />
-                    <p className="text-sm font-medium">Security</p>
-                  </Button>
-                </div>
-              </div>
-            </aside>
+    <Box sx={{ flexGrow: 1, p: { xs: 2, sm: 3, lg: 4 }, bgcolor: 'grey.100' }}>
+      <Grid container spacing={4} sx={{ maxWidth: '1200px', mx: 'auto' }}>
 
-            {/* Main Content */}
-            <main className="w-full lg:w-3/4">
-              <div className="mb-6">
-                <p className="text-4xl font-black leading-tight tracking-tight">
-                  My Profile
-                </p>
-              </div>
-
-              {/* Mobile Tabs */}
-              <div className="lg:hidden mb-6">
-                <Tabs defaultValue="personal" className="w-full">
-                  <TabsList className="w-full justify-start rounded-none bg-transparent border-b border-border-light dark:border-border-dark p-0">
-                    <TabsTrigger
-                      value="personal"
-                      className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary"
-                    >
-                      Personal
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="business"
-                      className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary"
-                    >
-                      Business
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="security"
-                      className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary"
-                    >
-                      Security
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </div>
-
-              {/* Personal Information */}
-              <div className="space-y-8" id="personal">
-                <div className="p-6 rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-background-dark">
-                  <div className="flex w-full flex-col gap-6">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
-                      <div className="flex items-center gap-4">
-                        <Avatar className="h-24 w-24">
-                          <AvatarImage src="https://github.com/shadcn.png" />
-                          <AvatarFallback>RS</AvatarFallback>
-                        </Avatar>
-                        <div className="flex flex-col justify-center">
-                          <p className="text-2xl font-bold">Rakesh Sharma</p>
-                          <p className="text-base text-gray-500 dark:text-gray-400">
-                            rakesh.sharma@example.com
-                          </p>
-                        </div>
-                      </div>
-                      <Button
-                        variant="secondary"
-                        className="h-10 px-4 text-sm font-bold w-full sm:w-auto"
-                      >
-                        Upload new picture
-                      </Button>
-                    </div>
-                    <form className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="flex flex-col space-y-2">
-                        <label htmlFor="fullName" className="text-sm font-medium">
-                          Full Name
-                        </label>
-                        <Input
-                          id="fullName"
-                          defaultValue="Rakesh Sharma"
-                          className="h-12"
-                        />
-                      </div>
-                      <div className="flex flex-col space-y-2">
-                        <label htmlFor="email" className="text-sm font-medium">
-                          Email Address
-                        </label>
-                        <Input
-                          id="email"
-                          defaultValue="rakesh.sharma@example.com"
-                          className="h-12 bg-gray-50 dark:bg-gray-800/50"
-                          readOnly
-                        />
-                      </div>
-                      <div className="flex flex-col space-y-2">
-                        <label htmlFor="phone" className="text-sm font-medium">
-                          Phone Number
-                        </label>
-                        <Input
-                          id="phone"
-                          type="tel"
-                          defaultValue="+91 98765 43210"
-                          className="h-12"
-                        />
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              </div>
-
-              {/* Business Information */}
-              <div className="space-y-8 mt-8" id="business">
-                <div className="p-6 rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-background-dark">
-                  <h3 className="text-xl font-bold mb-4">
-                    Business Information
-                  </h3>
-                  <form className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="flex flex-col md:col-span-2 space-y-2">
-                      <label
-                        htmlFor="businessName"
-                        className="text-sm font-medium"
-                      >
-                        Business Name
-                      </label>
-                      <Input
-                        id="businessName"
-                        defaultValue="Sharma Enterprises"
-                        className="h-12"
-                      />
-                    </div>
-                    <div className="flex flex-col md:col-span-2 space-y-2">
-                      <label
-                        htmlFor="businessAddress"
-                        className="text-sm font-medium"
-                      >
-                        Business Address
-                      </label>
-                      <Textarea
-                        id="businessAddress"
-                        defaultValue="123, Business Avenue, Commerce City, Mumbai, 400001"
-                        className="min-h-24"
-                      />
-                    </div>
-                    <div className="flex flex-col space-y-2">
-                      <label
-                        htmlFor="gstin"
-                        className="text-sm font-medium flex items-center gap-1"
-                      >
-                        GSTIN
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <Info className="h-4 w-4 text-gray-400" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>
-                                The Goods and Services Tax Identification Number
-                                (GSTIN) is a 15-digit PAN-based unique
-                                identification number.
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </label>
-                      <Input
-                        id="gstin"
-                        defaultValue="27ABCDE1234F1Z5"
-                        className="h-12"
-                      />
-                    </div>
-                  </form>
-                </div>
-              </div>
-
-              {/* Security */}
-              <div className="space-y-8 mt-8" id="security">
-                <div className="p-6 rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-background-dark">
-                  <h3 className="text-xl font-bold mb-4">Security</h3>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-medium">Password</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Last changed on 12 Jan 2024
-                        </p>
-                      </div>
-                      <Button
-                        variant="link"
-                        className="text-primary font-bold text-sm"
-                      >
-                        Change Password
-                      </Button>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-medium">Notifications</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Enable email notifications for invoices.
-                        </p>
-                      </div>
-                      <Switch
-                        id="notifications-toggle"
-                        defaultChecked={true}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="mt-8 flex justify-end gap-4">
-                <Button
-                  variant="secondary"
-                  className="h-12 px-6 text-sm font-bold"
+        {/* --- Desktop Sidebar --- */}
+        <Grid >
+          <Paper elevation={0} sx={{ p: 1, borderRadius: 2, position: 'sticky', top: '24px' }}>
+            <List component="nav">
+              {navItems.map((item) => (
+                <ListItemButton
+                  key={item.id}
+                  selected={activeSection === item.id}
+                  onClick={() => setActiveSection(item.id)}
+                  sx={{ borderRadius: 1, mb: 0.5 }}
                 >
-                  Cancel
-                </Button>
-                <Button className="h-12 px-6 text-sm font-bold">
-                  Save Changes
-                </Button>
-              </div>
-            </main>
-          </div>
-        </div>
-      </div>
-    </div>
+                  <ListItemIcon sx={{ minWidth: 36, color: activeSection === item.id ? 'primary.main' : 'inherit' }}>
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText primary={item.text} />
+                </ListItemButton>
+              ))}
+            </List>
+          </Paper>
+        </Grid>
+
+        {/* --- Main Content --- */}
+        <Grid >
+           <Box sx={{ mb: 3 }}>
+                <Typography variant="h4" component="h1" fontWeight="900">
+                    My Profile
+                </Typography>
+           </Box>
+
+            {/* --- Mobile Tabs --- */}
+            <Box sx={{ display: { xs: 'block', lg: 'none' }, mb: 3, borderBottom: 1, borderColor: 'divider' }}>
+                <Tabs value={activeSection} onChange={handleTabChange} variant="scrollable" scrollButtons="auto" aria-label="profile sections tabs">
+                    {navItems.map((item) => (
+                        <Tab key={item.id} label={item.text} value={item.id} sx={{textTransform: 'none'}}/>
+                    ))}
+                </Tabs>
+            </Box>
+
+            {/* Sections */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+
+              {/* --- Personal Information --- */}
+              <Paper id="personal" elevation={1} sx={{ p: 3, borderRadius: 2 }}>
+                 <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 2, mb: 3 }}>
+                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        {isLoading ? (
+                            <Skeleton variant="circular" width={96} height={96} />
+                        ) : (
+                            <Avatar src={avatarUrl} sx={{ width: 96, height: 96 }}>RS</Avatar>
+                        )}
+                        <Box>
+                            <Typography variant="h5" component="div" fontWeight="bold">
+                                {isLoading ? <Skeleton width={150} /> : fullName}
+                            </Typography>
+                            <Typography color="text.secondary">
+                                {isLoading ? <Skeleton width={200} /> : email}
+                            </Typography>
+                        </Box>
+                     </Box>
+                     <Button component="label" variant="outlined" startIcon={<CloudUploadIcon />} size="small">
+                        Upload Picture
+                        <input type="file" hidden accept="image/*" /* onChange={handleAvatarUpload} */ />
+                     </Button>
+                 </Box>
+                 <Grid container spacing={2}>
+                    <Grid >
+                        <TextField
+                            label="Full Name"
+                            fullWidth
+                            value={fullName}
+                            onChange={(e) => setFullName(e.target.value)}
+                            disabled={isLoading}
+                        />
+                    </Grid>
+                    <Grid >
+                         <TextField
+                            label="Email Address"
+                            fullWidth
+                            value={email}
+                            disabled
+                            InputProps={{ readOnly: true }}
+                            sx={{ bgcolor: 'action.disabledBackground' }}
+                        />
+                    </Grid>
+                     <Grid >
+                         <TextField
+                            label="Phone Number"
+                            fullWidth
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value)}
+                            disabled={isLoading}
+                        />
+                    </Grid>
+                 </Grid>
+              </Paper>
+
+               {/* --- Business Information --- */}
+              <Paper id="business" elevation={1} sx={{ p: 3, borderRadius: 2 }}>
+                <Typography variant="h6" component="h2" fontWeight="bold" sx={{ mb: 2 }}>Business Information</Typography>
+                 <Grid container spacing={2}>
+                    <Grid >
+                        <TextField
+                            label="Business Name"
+                            fullWidth
+                            value={businessName}
+                            onChange={(e) => setBusinessName(e.target.value)}
+                            disabled={isLoading}
+                        />
+                    </Grid>
+                     <Grid >
+                        <TextField
+                            label="Business Address"
+                            fullWidth
+                            multiline
+                            rows={3}
+                            value={businessAddress}
+                            onChange={(e) => setBusinessAddress(e.target.value)}
+                            disabled={isLoading}
+                        />
+                    </Grid>
+                     <Grid >
+                         <TextField
+                            label="GSTIN"
+                            fullWidth
+                            value={gstin}
+                            onChange={(e) => setGstin(e.target.value)}
+                            disabled={isLoading}
+                            InputProps={{
+                                endAdornment: (
+                                    <InputAdornment position="end">
+                                        <Tooltip title="The Goods and Services Tax Identification Number (GSTIN) is a 15-digit PAN-based unique identification number.">
+                                            <IconButton edge="end" size="small">
+                                                <InfoIcon fontSize="small" color="action"/>
+                                            </IconButton>
+                                        </Tooltip>
+                                    </InputAdornment>
+                                )
+                            }}
+                        />
+                    </Grid>
+                 </Grid>
+              </Paper>
+
+               {/* --- Security --- */}
+               <Paper id="security" elevation={1} sx={{ p: 3, borderRadius: 2 }}>
+                   <Typography variant="h6" component="h2" fontWeight="bold" sx={{ mb: 2 }}>Security</Typography>
+                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Box>
+                                <Typography fontWeight="medium">Password</Typography>
+                                <Typography variant="body2" color="text.secondary">Last changed on 12 Jan 2024</Typography>
+                            </Box>
+                           <Button variant="text" size="small">Change Password</Button>
+                       </Box>
+                        <Divider />
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Box>
+                                <Typography fontWeight="medium">Notifications</Typography>
+                                <Typography variant="body2" color="text.secondary">Enable email notifications for invoices.</Typography>
+                            </Box>
+                           <Switch
+                                checked={notificationsOn}
+                                onChange={(e) => setNotificationsOn(e.target.checked)}
+                                disabled={isLoading}
+                                inputProps={{ 'aria-label': 'Enable email notifications' }}
+                            />
+                       </Box>
+                   </Box>
+               </Paper>
+
+                {/* --- Action Buttons & Status --- */}
+               <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 2, mt: 2 }}>
+                  {saveStatus === 'success' && <Alert severity="success" sx={{ py: 0.5, mr: 'auto' }}>Changes saved!</Alert>}
+                  {saveStatus === 'error' && <Alert severity="error" sx={{ py: 0.5, mr: 'auto' }}>Failed to save changes.</Alert>}
+                  <Button variant="outlined" disabled={mutation.isPending}>Cancel</Button>
+                  <Button
+                    variant="contained"
+                    onClick={handleSaveChanges}
+                    disabled={mutation.isPending || isLoading}
+                  >
+                     {mutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Save Changes'}
+                  </Button>
+               </Box>
+            </Box>
+        </Grid>
+      </Grid>
+    </Box>
   );
 }

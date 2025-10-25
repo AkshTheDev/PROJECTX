@@ -1,383 +1,395 @@
-// src/components/InvoiceHistoryScreen.tsx
-import * as React from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Receipt,
-  Search,
-  CalendarIcon,
-  X,
-  Edit,
-  Download,
-  Trash2,
-  ChevronLeft,
-  ChevronRight,
-  User,
-} from "lucide-react";
+// client/src/components/app/InvoiceHistoryScreen.tsx
+import React, { useState } from 'react';
+import api from '@/lib/api';
+import { useQuery } from '@tanstack/react-query';
 
-// Helper component for Stat Cards
-const StatCard = ({ title, value, valueClass = "" }: any) => (
-  <div className="flex min-w-[158px] flex-1 flex-col gap-2 rounded-lg p-6 border border-[#e0e0e0] dark:border-gray-700 bg-white dark:bg-gray-800">
-    <p className="text-[#333333] dark:text-gray-300 text-base font-medium leading-normal">
-      {title}
-    </p>
-    <p
-      className={`tracking-light text-2xl font-bold leading-tight ${
-        valueClass || "text-[#333333] dark:text-white"
-      }`}
-    >
-      {value}
-    </p>
-  </div>
-);
+// MUI Imports
+import Box from '@mui/material/Box';
+import AppBar from '@mui/material/AppBar';
+import Toolbar from '@mui/material/Toolbar';
+import Typography from '@mui/material/Typography';
+import Link from '@mui/material/Link';
+import Button from '@mui/material/Button';
+import Avatar from '@mui/material/Avatar';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Grid from '@mui/material/Grid';
+import Paper from '@mui/material/Paper';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
+import Select, { type SelectChangeEvent } from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import Chip from '@mui/material/Chip';
+import IconButton from '@mui/material/IconButton';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import Pagination from '@mui/material/Pagination';
+import Skeleton from '@mui/material/Skeleton';
+// Standard DatePicker import
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+// REMOVED LocalizationProvider and AdapterDateFns imports from here
 
-// Helper component for Invoice Row
-const InvoiceRow = ({ id, customer, invoiceDate, dueDate, amount, status }: any) => {
-  let statusClass = "";
-  let dotClass = "";
+// Icon Imports
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import PersonIcon from '@mui/icons-material/Person';
+import SearchIcon from '@mui/icons-material/Search';
+// CalendarTodayIcon might not be needed
+import CloseIcon from '@mui/icons-material/Close';
+import EditIcon from '@mui/icons-material/Edit';
+import DownloadIcon from '@mui/icons-material/Download';
+import DeleteIcon from '@mui/icons-material/Delete';
+
+// Define types for data (Adjust based on your actual API response)
+interface InvoiceSummaryStats {
+  totalInvoiced: number;
+  totalPaid: number;
+  totalOutstanding: number;
+}
+
+type InvoiceStatus = 'Paid' | 'Unpaid' | 'Overdue' | 'Draft'; // Match API
+
+interface Invoice {
+  id: string; // Unique ID for the row key
+  invoiceNumber: string;
+  customerName: string;
+  invoiceDate: string; // Should ideally be Date objects, format as needed
+  dueDate: string;     // Should ideally be Date objects, format as needed
+  amount: number;
+  status: InvoiceStatus;
+}
+
+// API fetching functions (Example endpoints, adjust as needed)
+const fetchInvoiceSummary = async (): Promise<InvoiceSummaryStats> => {
+  // const { data } = await api.get('/invoices/summary');
+  // Mock data for now:
+  await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate loading
+  return { totalInvoiced: 125000, totalPaid: 100000, totalOutstanding: 25000 };
+};
+
+const fetchInvoices = async (/* page = 1, filters = {} */): Promise<{ invoices: Invoice[], totalCount: number }> => {
+  // const { data } = await api.get('/invoices', { params: { page, ...filters } });
+  // Mock data for now:
+  await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate loading
+  const mockInvoices: Invoice[] = [
+    { id: '1', invoiceNumber: 'INV-00123', customerName: 'Acme Corporation', invoiceDate: '15 Jul 2024', dueDate: '30 Jul 2024', amount: 15000.00, status: 'Paid' },
+    { id: '2', invoiceNumber: 'INV-00124', customerName: 'Innovate LLC', invoiceDate: '12 Jul 2024', dueDate: '27 Jul 2024', amount: 5000.00, status: 'Overdue' },
+    { id: '3', invoiceNumber: 'INV-00125', customerName: 'Quantum Solutions', invoiceDate: '10 Jul 2024', dueDate: '25 Jul 2024', amount: 20000.00, status: 'Unpaid' },
+    { id: '4', invoiceNumber: 'INV-00126', customerName: 'Apex Designs', invoiceDate: '05 Jul 2024', dueDate: '20 Jul 2024', amount: 8500.00, status: 'Draft' },
+  ];
+  return { invoices: mockInvoices, totalCount: 25 }; // Example total count
+};
+
+// Helper function for status chip colors
+const getStatusChipStyle = (status: InvoiceStatus): { color: "success" | "warning" | "error" | "info" | "default", variant: "filled" | "outlined" } => {
   switch (status) {
-    case "Paid":
-      statusClass = "bg-green-100 text-green-800";
-      dotClass = "bg-green-500";
-      break;
-    case "Overdue":
-      statusClass = "bg-orange-100 text-orange-800";
-      dotClass = "bg-orange-500";
-      break;
-    case "Unpaid":
-      statusClass = "bg-blue-100 text-blue-800";
-      dotClass = "bg-blue-500";
-      break;
-    case "Draft":
-      statusClass = "bg-gray-100 text-gray-800";
-      dotClass = "bg-gray-500";
-      break;
+    case 'Paid': return { color: 'success', variant: 'filled' };
+    case 'Overdue': return { color: 'error', variant: 'filled' };
+    case 'Unpaid': return { color: 'info', variant: 'filled' };
+    case 'Draft': return { color: 'default', variant: 'outlined' };
+    default: return { color: 'default', variant: 'outlined' };
   }
-
-  return (
-    <TableRow className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-      <TableCell className="font-medium">{id}</TableCell>
-      <TableCell>{customer}</TableCell>
-      <TableCell className="text-gray-600 dark:text-gray-300">
-        {invoiceDate}
-      </TableCell>
-      <TableCell className="text-gray-600 dark:text-gray-300">
-        {dueDate}
-      </TableCell>
-      <TableCell className="font-medium text-right">{amount}</TableCell>
-      <TableCell>
-        <span
-          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}`}
-        >
-          <span className={`w-2 h-2 mr-1.5 ${dotClass} rounded-full`}></span>
-          {status}
-        </span>
-      </TableCell>
-      <TableCell className="text-center">
-        <div className="flex justify-center items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-400"
-            title="Edit Invoice"
-          >
-            <Edit className="h-5 w-5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-400"
-            title="Download PDF"
-          >
-            <Download className="h-5 w-5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 text-red-500"
-            title="Delete Invoice"
-          >
-            <Trash2 className="h-5 w-5" />
-          </Button>
-        </div>
-      </TableCell>
-    </TableRow>
-  );
 };
 
 export function InvoiceHistoryScreen() {
-  const [date, setDate] = React.useState<Date | undefined>(new Date());
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [activeFilters, setActiveFilters] = useState<{ type: string, value: string }[]>([]);
+
+  // Fetch Summary Stats
+  const { data: summary, isLoading: isLoadingSummary } = useQuery({
+    queryKey: ['invoiceSummary'],
+    queryFn: fetchInvoiceSummary,
+  });
+
+  // Fetch Invoices
+  const { data: invoiceData, isLoading: isLoadingInvoices } = useQuery({
+    queryKey: ['invoices'], // Add page, filters here later
+    queryFn: () => fetchInvoices(),
+  });
+
+  const handleStatusChange = (event: SelectChangeEvent<string>) => {
+    setStatusFilter(event.target.value);
+    // TODO: Update activeFilters state and refetch invoices
+  };
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(event.target.value);
+    // TODO: Add debounce and refetch invoices
+  };
+
+  const handleClearFilters = () => {
+      setStatusFilter('all');
+      setSearchQuery('');
+      setStartDate(null);
+      setEndDate(null);
+      setActiveFilters([]);
+      // TODO: Refetch invoices
+  }
+
+  // TODO: Add functions to add/remove filter chips
 
   return (
-    <div className="relative flex h-auto min-h-screen w-full flex-col bg-background-light dark:bg-background-dark text-[#333333] dark:text-white">
-      {/* Header */}
-      <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-b-[#e0e0e0] dark:border-b-gray-700 px-4 sm:px-6 lg:px-8 py-3 bg-white dark:bg-gray-800">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-primary">
-            <Receipt className="h-8 w-8" />
-            <h2 className="text-[#333333] dark:text-white text-lg font-bold">
-              GST Invoicing
-            </h2>
-          </div>
-        </div>
-        <div className="hidden md:flex items-center gap-9">
-          <a
-            className="text-[#333333] dark:text-gray-300 text-sm font-medium leading-normal"
-            href="#"
-          >
-            Dashboard
-          </a>
-          <a
-            className="text-primary text-sm font-bold leading-normal"
-            href="#"
-          >
-            Invoice History
-          </a>
-          <a
-            className="text-[#333333] dark:text-gray-300 text-sm font-medium leading-normal"
-            href="#"
-          >
-            Create Invoice
-          </a>
-        </div>
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 w-10 bg-primary/20 text-primary gap-2 text-sm font-bold leading-normal tracking-[0.015em] min-w-0 px-2.5"
-          >
-            <User className="h-5 w-5" />
-          </Button>
-          <Avatar className="h-10 w-10">
-            <AvatarImage src="https://github.com/shadcn.png" />
-            <AvatarFallback>U</AvatarFallback>
-          </Avatar>
-        </div>
-      </header>
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: 'grey.100' }}>
+      {/* --- Header --- */}
+      <AppBar
+        position="sticky"
+        sx={{
+          boxShadow: 'none',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          backgroundColor: 'background.paper',
+          color: 'text.primary',
+        }}
+      >
+        <Toolbar sx={{ justifyContent: 'space-between' }}>
+          {/* Left Side */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <ReceiptLongIcon color="primary" sx={{ fontSize: 30 }}/>
+              <Typography variant="h6" noWrap component="div" fontWeight="bold">
+                GST Invoicing
+              </Typography>
+            </Box>
+            {/* Navigation Links (Desktop) */}
+            <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 3 }}>
+              <Link href="#" color="inherit" underline="none" sx={{ fontSize: '0.875rem' }}>Dashboard</Link>
+              <Link href="#" color="primary" underline="none" sx={{ fontSize: '0.875rem', fontWeight: 'bold' }}>Invoice History</Link>
+              <Link href="#" color="inherit" underline="none" sx={{ fontSize: '0.875rem' }}>Create Invoice</Link>
+            </Box>
+          </Box>
 
-      {/* Main Content */}
-      <main className="px-4 sm:px-6 lg:px-8 py-8 flex-1">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
-            <p className="text-3xl md:text-4xl font-black tracking-tight">
-              Invoice History
-            </p>
-          </div>
+          {/* Right Side */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <IconButton color="inherit" sx={{ bgcolor: 'action.hover' }}>
+              <PersonIcon />
+            </IconButton>
+            <Avatar
+              alt="User Avatar"
+              src="https://via.placeholder.com/40" // Replace with actual avatar URL
+              sx={{ width: 40, height: 40 }}
+            />
+          </Box>
+        </Toolbar>
+      </AppBar>
+
+      {/* --- Main Content --- */}
+      <Box component="main" sx={{ flexGrow: 1, p: { xs: 2, sm: 3, lg: 4 } }}>
+        <Box sx={{ maxWidth: '1200px', mx: 'auto' }}>
+          <Typography variant="h4" component="h1" fontWeight="900" sx={{ mb: 4 }}>
+            Invoice History
+          </Typography>
 
           {/* Stat Cards */}
-          <div className="flex flex-wrap gap-4 mb-6">
-            <StatCard title="Total Invoiced" value="₹1,25,000" />
-            <StatCard title="Total Paid" value="₹1,00,000" />
-            <StatCard
-              title="Total Outstanding"
-              value="₹25,000"
-              valueClass="text-orange-500"
-            />
-          </div>
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            <Grid >
+              <Card>
+                <CardContent>
+                  <Typography sx={{ fontSize: 14 }} color="text.secondary" gutterBottom>Total Invoiced</Typography>
+                  <Typography variant="h5" component="div" fontWeight="bold">
+                    {isLoadingSummary ? <Skeleton width="80%"/> : `₹${summary?.totalInvoiced.toLocaleString()}`}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+             <Grid >
+              <Card>
+                <CardContent>
+                  <Typography sx={{ fontSize: 14 }} color="text.secondary" gutterBottom>Total Paid</Typography>
+                  <Typography variant="h5" component="div" fontWeight="bold">
+                    {isLoadingSummary ? <Skeleton width="80%"/> : `₹${summary?.totalPaid.toLocaleString()}`}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+             <Grid >
+              <Card>
+                <CardContent>
+                  <Typography sx={{ fontSize: 14 }} color="text.secondary" gutterBottom>Total Outstanding</Typography>
+                  <Typography variant="h5" component="div" fontWeight="bold" color="warning.main">
+                     {isLoadingSummary ? <Skeleton width="80%"/> : `₹${summary?.totalOutstanding.toLocaleString()}`}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
 
           {/* Filters & Table Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+          <Paper elevation={1} sx={{ p: 3, borderRadius: 2 }}>
             {/* Filter Controls */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-4">
-              <div className="lg:col-span-2 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
-                <Input
-                  className="h-12 pl-10"
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+              <Grid > {/* Adjusted grid size */}
+                <TextField
+                  fullWidth
                   placeholder="Search by Invoice # or Customer"
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon color="action" />
+                      </InputAdornment>
+                    ),
+                  }}
+                  size="small"
                 />
-              </div>
-              <div>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className="w-full h-12 justify-between text-left font-normal"
-                    >
-                      <span>Select Date Range</span>
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={date}
-                      onSelect={setDate}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div>
-                <Select>
-                  <SelectTrigger className="w-full h-12">
-                    <SelectValue placeholder="All Statuses" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="paid">Paid</SelectItem>
-                    <SelectItem value="unpaid">Unpaid</SelectItem>
-                    <SelectItem value="overdue">Overdue</SelectItem>
-                    <SelectItem value="draft">Draft</SelectItem>
-                  </SelectContent>
+              </Grid>
+              {/* --- Date Pickers --- */}
+              <Grid > {/* Adjusted grid size */}
+                 {/* REMOVED LocalizationProvider wrapper */}
+                 <DatePicker
+                   label="Start Date"
+                   value={startDate}
+                   onChange={(newValue) => setStartDate(newValue)}
+                   slotProps={{ textField: { size: 'small', fullWidth: true } }}
+                 />
+              </Grid>
+              <Grid > {/* Adjusted grid size */}
+                 {/* REMOVED LocalizationProvider wrapper */}
+                 <DatePicker
+                   label="End Date"
+                   value={endDate}
+                   onChange={(newValue) => setEndDate(newValue)}
+                   slotProps={{ textField: { size: 'small', fullWidth: true } }}
+                   minDate={startDate ?? undefined}
+                 />
+              </Grid>
+              {/* --- End Date Pickers --- */}
+              <Grid > {/* Adjusted grid size */}
+                <Select
+                  fullWidth
+                  value={statusFilter}
+                  onChange={handleStatusChange}
+                  displayEmpty
+                  size="small"
+                >
+                  <MenuItem value="all">All Statuses</MenuItem>
+                  <MenuItem value="Paid">Paid</MenuItem>
+                  <MenuItem value="Unpaid">Unpaid</MenuItem>
+                  <MenuItem value="Overdue">Overdue</MenuItem>
+                  <MenuItem value="Draft">Draft</MenuItem>
                 </Select>
-              </div>
-            </div>
+              </Grid>
+            </Grid>
 
-            {/* Active Filters */}
-            <div className="flex flex-wrap items-center gap-2 mb-4">
-              <span className="flex items-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-3 py-1 rounded-full text-sm">
-                Invoice # : INV-00123
-                <Button variant="ghost" size="icon" className="ml-1 h-5 w-5">
-                  <X className="h-4 w-4" />
-                </Button>
-              </span>
-              <span className="flex items-center bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-3 py-1 rounded-full text-sm">
-                Status : Unpaid
-                <Button variant="ghost" size="icon" className="ml-1 h-5 w-5">
-                  <X className="h-4 w-4" />
-                </Button>
-              </span>
-              <Button
-                variant="link"
-                className="text-primary text-sm font-medium ml-2 p-0"
-              >
-                Clear All
-              </Button>
-            </div>
+             {/* Active Filters Display */}
+             {activeFilters.length > 0 && (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2, alignItems: 'center' }}>
+                    {activeFilters.map((filter, index) => (
+                    <Chip
+                        key={index}
+                        label={`${filter.type} : ${filter.value}`}
+                        onDelete={() => {/* TODO: Handle filter removal */}}
+                        size="small"
+                    />
+                    ))}
+                    <Button
+                        size="small"
+                        onClick={handleClearFilters}
+                        sx={{ textTransform: 'none', ml: 1 }}
+                        color="primary"
+                    >
+                        Clear All
+                    </Button>
+                </Box>
+            )}
 
             {/* Invoice Table */}
-            <div className="overflow-x-auto rounded-xl">
-              <Table>
-                <TableHeader>
+            <TableContainer>
+              <Table stickyHeader aria-label="invoice history table">
+                <TableHead>
                   <TableRow>
-                    <TableHead>Invoice #</TableHead>
-                    <TableHead>Customer Name</TableHead>
-                    <TableHead>Invoice Date</TableHead>
-                    <TableHead>Due Date</TableHead>
-                    <TableHead className="text-right">Amount (₹)</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-center">Actions</TableHead>
+                    <TableCell>Invoice #</TableCell>
+                    <TableCell>Customer Name</TableCell>
+                    <TableCell>Invoice Date</TableCell>
+                    <TableCell>Due Date</TableCell>
+                    <TableCell align="right">Amount (₹)</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell align="center">Actions</TableCell>
                   </TableRow>
-                </TableHeader>
+                </TableHead>
                 <TableBody>
-                  <InvoiceRow
-                    id="INV-00123"
-                    customer="Acme Corporation"
-                    invoiceDate="15 Jul 2024"
-                    dueDate="30 Jul 2024"
-                    amount="15,000.00"
-                    status="Paid"
-                  />
-                  <InvoiceRow
-                    id="INV-00124"
-                    customer="Innovate LLC"
-                    invoiceDate="12 Jul 2024"
-                    dueDate="27 Jul 2024"
-                    amount="5,000.00"
-                    status="Overdue"
-                  />
-                  <InvoiceRow
-                    id="INV-00125"
-                    customer="Quantum Solutions"
-                    invoiceDate="10 Jul 2024"
-                    dueDate="25 Jul 2024"
-                    amount="20,000.00"
-                    status="Unpaid"
-                  />
-                  <InvoiceRow
-                    id="INV-00126"
-                    customer="Apex Designs"
-                    invoiceDate="05 Jul 2024"
-                    dueDate="20 Jul 2024"
-                    amount="8,500.00"
-                    status="Draft"
-                  />
+                  {isLoadingInvoices ? (
+                     [...Array(4)].map((_, index) => (
+                      <TableRow key={index}>
+                        <TableCell><Skeleton /></TableCell>
+                        <TableCell><Skeleton width="60%"/></TableCell>
+                        <TableCell><Skeleton /></TableCell>
+                        <TableCell><Skeleton /></TableCell>
+                        <TableCell align="right"><Skeleton /></TableCell>
+                        <TableCell><Skeleton /></TableCell>
+                        <TableCell align="center"><Skeleton variant="circular" width={24} height={24}/></TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    invoiceData?.invoices.map((row) => {
+                      const statusStyle = getStatusChipStyle(row.status);
+                      return (
+                        <TableRow
+                          key={row.id}
+                          hover
+                          sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                        >
+                          <TableCell component="th" scope="row">{row.invoiceNumber}</TableCell>
+                          <TableCell>{row.customerName}</TableCell>
+                          <TableCell>{row.invoiceDate}</TableCell>
+                          <TableCell>{row.dueDate}</TableCell>
+                          <TableCell align="right">{row.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                          <TableCell>
+                            <Chip label={row.status} color={statusStyle.color} variant={statusStyle.variant} size="small" />
+                          </TableCell>
+                          <TableCell align="center">
+                            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
+                              <IconButton size="small" aria-label="edit"><EditIcon fontSize="small" /></IconButton>
+                              <IconButton size="small" aria-label="download"><DownloadIcon fontSize="small" /></IconButton>
+                              <IconButton size="small" aria-label="delete" color="error"><DeleteIcon fontSize="small" /></IconButton>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    }) ?? (
+                       <TableRow>
+                           <TableCell colSpan={7} align="center">No invoices found.</TableCell>
+                       </TableRow>
+                    )
+                  )}
                 </TableBody>
               </Table>
-            </div>
+            </TableContainer>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between pt-4">
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                Showing 1 to 4 of 25 invoices
-              </span>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="p-2"
-                  disabled
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </Button>
-                <Button
-                  variant="default"
-                  className="px-4 py-2 text-sm font-medium"
-                >
-                  1
-                </Button>
-                <Button
-                  variant="outline"
-                  className="px-4 py-2 text-sm font-medium"
-                >
-                  2
-                </Button>
-                <Button
-                  variant="outline"
-                  className="px-4 py-2 text-sm font-medium"
-                >
-                  3
-                </Button>
-                <Button variant="outline" size="icon" className="p-2">
-                  <ChevronRight className="h-5 w-5" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pt: 2, mt: 2, borderTop: 1, borderColor: 'divider' }}>
+              <Typography variant="body2" color="text.secondary">
+                Showing 1 to {invoiceData?.invoices.length ?? 0} of {invoiceData?.totalCount ?? 0} invoices
+              </Typography>
+              <Pagination
+                count={Math.ceil((invoiceData?.totalCount ?? 0) / (invoiceData?.invoices.length || 1))}
+                color="primary"
+                size="small"
+                hidePrevButton={Math.ceil((invoiceData?.totalCount ?? 0) / (invoiceData?.invoices.length || 1)) <= 1}
+                hideNextButton={Math.ceil((invoiceData?.totalCount ?? 0) / (invoiceData?.invoices.length || 1)) <= 1}
+              />
+            </Box>
+          </Paper>
+        </Box>
+      </Box>
 
-      {/* Footer */}
-      <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-auto">
-        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 text-center text-sm text-gray-500 dark:text-gray-400">
-          <p>© 2024 GST Invoicing Inc. All rights reserved.</p>
-          <div className="mt-2">
-            <a className="hover:text-primary" href="#">
-              Terms of Service
-            </a>
-            <span className="mx-2">|</span>
-            <a className="hover:text-primary" href="#">
-              Privacy Policy
-            </a>
-            <span className="mx-2">|</span>
-            <a className="hover:text-primary" href="#">
-              Support
-            </a>
-          </div>
-        </div>
-      </footer>
-    </div>
+      {/* --- Footer --- */}
+      <Box component="footer" sx={{ bgcolor: 'background.paper', borderTop: 1, borderColor: 'divider', mt: 'auto', py: 2, px: { xs: 2, sm: 3 } }}>
+         <Typography variant="body2" color="text.secondary" align="center">
+          © 2024 GST Invoicing Inc. All rights reserved.
+        </Typography>
+        <Box sx={{ mt: 1, display: 'flex', justifyContent: 'center', gap: 2 }}>
+           <Link href="#" variant="body2" color="text.secondary" underline="hover">Terms of Service</Link>
+           <Link href="#" variant="body2" color="text.secondary" underline="hover">Privacy Policy</Link>
+           <Link href="#" variant="body2" color="text.secondary" underline="hover">Support</Link>
+        </Box>
+      </Box>
+    </Box>
   );
 }

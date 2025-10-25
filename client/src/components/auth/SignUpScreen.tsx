@@ -1,18 +1,113 @@
-// src/components/SignUpScreen.tsx
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Receipt, Eye, Phone } from "lucide-react";
-import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
-import api from "@/lib/api";
+// client/src/components/auth/SignUpScreen.tsx
+import React, { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import api from '@/lib/api'; // Keep your api client
 
-function SignUpScreen() {
-  
+// MUI Imports
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import Link from '@mui/material/Link';
+import TextField from '@mui/material/TextField';
+import Button from '@mui/material/Button';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import Divider from '@mui/material/Divider';
+import InputAdornment from '@mui/material/InputAdornment';
+import IconButton from '@mui/material/IconButton';
+import CircularProgress from '@mui/material/CircularProgress';
+import Grid from '@mui/material/Grid';
+
+// Icon Imports
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import PhoneIcon from '@mui/icons-material/Phone';
+
+// Define styles using MUI's sx prop or objects for better organization
+const styles = {
+  root: {
+    minHeight: '100vh',
+    display: 'flex',
+  },
+  formSide: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: { xs: 2, lg: 8 }, // Use theme spacing
+    backgroundColor: 'background.paper', // MUI theme background
+  },
+  illustrationSide: {
+    flex: 1,
+    display: { xs: 'none', lg: 'flex' }, // Hide on small screens
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 8,
+    backgroundColor: 'primary.lightest', // Example custom color (needs theme setup) or adjust
+    textAlign: 'center',
+  },
+  logoLink: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 1,
+    textDecoration: 'none',
+    color: 'text.primary',
+    marginBottom: 4,
+  },
+  formContainer: {
+    width: '100%',
+    maxWidth: '450px', // Max width for the form
+  },
+  tabs: {
+    borderBottom: 1,
+    borderColor: 'divider',
+    marginBottom: 3,
+  },
+  tab: {
+    textTransform: 'none',
+    fontWeight: 'bold',
+    fontSize: '0.875rem',
+  },
+  inputLabel: {
+    fontWeight: 500,
+    marginBottom: 1,
+  },
+  termsText: {
+    fontSize: '0.875rem',
+    color: 'text.secondary',
+    marginTop: 2,
+    marginBottom: 2,
+  },
+  dividerContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 2,
+    margin: '16px 0',
+  },
+  badgeImage: {
+    height: '40px',
+  },
+  illustrationImageContainer: {
+     maxWidth: '320px', // max-w-xs equivalent
+     margin: '0 auto 32px auto', // mx-auto mb-8
+  },
+   illustrationImage: {
+    width: '100%',
+    height: 'auto', // Adjust based on actual image aspect ratio if needed
+    backgroundSize: 'contain',
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'center',
+  },
+};
+
+export function SignUpScreen() {
+  const [tabValue, setTabValue] = useState('signup');
   const [email, setEmail] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   const mutation = useMutation({
@@ -32,180 +127,169 @@ function SignUpScreen() {
     mutation.mutate({ email, companyName, password });
   };
 
-  // ... (return statement)
-  return (
-    <div className="relative flex min-h-screen w-full flex-col">
-      <div className="flex flex-1 w-full">
-        <div className="flex flex-1 flex-col justify-center items-center p-4 lg:p-8">
-          <div className="w-full max-w-md">
-            <div className="mb-8 text-center lg:text-left">
-              <a
-                className="inline-flex items-center gap-2 text-2xl font-bold text-dark-gray dark:text-white"
-                href="#"
-              >
-                <Receipt className="h-8 w-8 text-primary" />
-                <span>Biz-Invoice</span>
-              </a>
-            </div>
-            <div className="flex flex-col gap-8">
-              <div className="flex flex-col gap-3">
-                <p className="text-dark-gray dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">
-                  Create Your Business Account
-                </p>
-                <p className="text-medium-gray dark:text-gray-300 text-base font-normal leading-normal">
-                  Join thousands of businesses streamlining their invoicing
-                  process securely.
-                </p>
-              </div>
-              <Tabs defaultValue="signup" className="pb-3">
-                <TabsList className="grid w-full grid-cols-2 gap-8 border-b border-light-gray dark:border-gray-700 rounded-none bg-transparent p-0">
-                  <TabsTrigger
-                    value="login"
-                    className="rounded-none border-b-[3px] border-b-transparent data-[state=active]:border-b-primary data-[state=active]:text-primary pb-[13px] pt-4 text-sm font-bold text-medium-gray dark:text-gray-400"
-                  >
-                    Login
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="signup"
-                    className="rounded-none border-b-[3px] border-b-transparent data-[state=active]:border-b-primary data-[state=active]:text-primary pb-[13px] pt-4 text-sm font-bold"
-                  >
-                    Sign Up
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-              <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
-                <div className="flex flex-col gap-2">
-                  <label
-                    htmlFor="email"
-                    className="text-dark-gray dark:text-gray-200 text-base font-medium leading-normal"
-                  >
-                    Business Email
-                  </label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="Enter your business email address"
-                    className="h-14 p-[15px]"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <label
-                    htmlFor="company"
-                    className="text-dark-gray dark:text-gray-200 text-base font-medium leading-normal"
-                  >
-                    Company Name
-                  </label>
-                  <Input
-                    id="company"
-                    type="text"
-                    placeholder="Your company name"
-                    className="h-14 p-[15px]"
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <label
-                    htmlFor="password"
-                    className="text-dark-gray dark:text-gray-200 text-base font-medium leading-normal"
-                  >
-                    Password
-                  </label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="Create your password"
-                      className="h-14 p-[15px] pr-12"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                    <Button
-                      aria-label="Toggle password visibility"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-1 top-1/2 -translate-y-1/2 h-12 w-12 text-medium-gray dark:text-gray-400"
-                    >
-                      <Eye className="h-5 w-5" />
-                    </Button>
-                  </div>
-                </div>
-                <p className="text-sm font-normal leading-normal text-medium-gray dark:text-gray-400">
-                  By signing up, you agree to our{" "}
-                  <a className="underline hover:text-primary" href="#">
-                    Terms of Service
-                  </a>{" "}
-                  and confirm that you have read our{" "}
-                  <a className="underline hover:text-primary" href="#">
-                    Privacy Policy
-                  </a>
-                  .
-                </p>
-                <Button
-                  type="submit"
-                  className="h-14 text-base font-bold"
-                  disabled={mutation.isPending}
-                >
-                 {mutation.isPending ? 'Creating...' : 'Create Account'}
-                </Button>
-                <div className="flex items-center gap-4">
-                  <hr className="flex-1 border-t border-light-gray dark:border-gray-700" />
-                  <p className="text-medium-gray dark:text-gray-400 text-sm">
-                    or
-                  </p>
-                  <hr className="flex-1 border-t border-light-gray dark:border-gray-700" />
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-14 text-base font-medium"
-                >
-                  <Phone className="mr-3 h-5 w-5" />
-                  Request a Demo
-                </Button>
-              </form>
-              <div className="flex justify-center gap-4 mt-4">
-                <img
-                  alt="Security Badge 1"
-                  className="h-10"
-                  src="https://storage.googleapis.com/stitch-assets/static/assets/images/stitch_login_signup/login/signup_1/badge1.png"
-                />
-                <img
-                  alt="Security Badge 2"
-                  className="h-10"
-                  src="https://storage.googleapis.com/stitch-assets/static/assets/images/stitch_login_signup/login/signup_1/badge2.png"
-                />
-                <img
-                  alt="Security Badge 3"
-                  className="h-10"
-                  src="https://storage.googleapis.com/stitch-assets/static/assets/images/stitch_login_signup/login/signup_1/badge1.png"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="hidden lg:flex flex-1 bg-accent-blue/10 dark:bg-accent-blue/20 items-center justify-center p-8">
-          <div className="max-w-md text-center">
-            <img
-              src="https://storage.googleapis.com/stitch-assets/static/assets/images/stitch_login_signup/login/signup_1/illustration.png"
-              alt="Illustration of secure data management"
-              className="w-full max-w-xs mx-auto mb-8"
-            />
-            <h2 className="text-3xl font-bold text-dark-gray dark:text-white mb-4">
-              Secure & Compliant Business Invoicing
-            </h2>
-            <p className="text-medium-gray dark:text-gray-300">
-              Our platform ensures enterprise-grade security and full
-              compliance with industry regulations, safeguarding your financial
-              data.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  const handleTabChange = (event: React.SyntheticEvent, newValue: string) => {
+    setTabValue(newValue);
+    if (newValue === 'login') {
+      navigate('/login'); // Navigate if Login tab is clicked
+    }
+  };
 
+  const handleClickShowPassword = () => setShowPassword((show) => !show);
+  const handleMouseDownPassword = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+  };
+
+  return (
+    <Grid container sx={styles.root}>
+      {/* Form Side */}
+      <Grid  sx={styles.formSide}>
+        <Box sx={styles.formContainer}>
+          {/* Logo */}
+          <Box sx={{ textAlign: { xs: 'center', lg: 'left' } }}>
+            <Link href="#" sx={styles.logoLink}>
+              <ReceiptLongIcon sx={{ fontSize: '32px', color: 'primary.main' }} />
+              <Typography variant="h5" component="span" fontWeight="bold">
+                Biz-Invoice
+              </Typography>
+            </Link>
+          </Box>
+
+          <Box sx={{ mt: 4 }}>
+            {/* Titles */}
+            <Typography variant="h4" component="p" fontWeight="900" gutterBottom>
+              Create Your Business Account
+            </Typography>
+            <Typography variant="body1" color="text.secondary" gutterBottom>
+              Join thousands of businesses streamlining their invoicing process securely.
+            </Typography>
+
+            {/* Tabs */}
+            <Box sx={styles.tabs}>
+              <Tabs value={tabValue} onChange={handleTabChange} variant="fullWidth">
+                <Tab label="Login" value="login" sx={styles.tab} />
+                <Tab label="Sign Up" value="signup" sx={styles.tab} />
+              </Tabs>
+            </Box>
+
+            {/* Form */}
+            <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Box>
+                <Typography variant="body1" sx={styles.inputLabel}>Business Email</Typography>
+                <TextField
+                  required
+                  fullWidth
+                  id="email"
+                  placeholder="Enter your business email address"
+                  name="email"
+                  autoComplete="email"
+                  autoFocus
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  size="medium" // Adjust size as needed
+                />
+              </Box>
+              <Box>
+                 <Typography variant="body1" sx={styles.inputLabel}>Company Name</Typography>
+                <TextField
+                  required
+                  fullWidth
+                  id="companyName"
+                  placeholder="Your company name"
+                  name="companyName"
+                  autoComplete="organization"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  size="medium"
+                />
+              </Box>
+              <Box>
+                 <Typography variant="body1" sx={styles.inputLabel}>Password</Typography>
+                <TextField
+                  required
+                  fullWidth
+                  name="password"
+                  placeholder="Create your password"
+                  type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  size="medium"
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="toggle password visibility"
+                          onClick={handleClickShowPassword}
+                          onMouseDown={handleMouseDownPassword}
+                          edge="end"
+                        >
+                          {showPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Box>
+
+              <Typography sx={styles.termsText}>
+                By signing up, you agree to our{' '}
+                <Link href="#" underline="hover">Terms of Service</Link> and confirm
+                that you have read our{' '}
+                <Link href="#" underline="hover">Privacy Policy</Link>.
+              </Typography>
+
+              <Button
+                type="submit"
+                fullWidth
+                variant="contained"
+                disabled={mutation.isPending}
+                sx={{ mt: 3, mb: 2, py: 1.5, textTransform: 'none', fontSize: '1rem', fontWeight: 'bold' }} // py for padding-y
+              >
+                {mutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Create Account'}
+              </Button>
+
+              <Box sx={styles.dividerContainer}>
+                <Divider sx={{ flexGrow: 1 }} />
+                <Typography variant="body2" color="text.secondary">or</Typography>
+                <Divider sx={{ flexGrow: 1 }} />
+              </Box>
+
+              <Button
+                type="button"
+                fullWidth
+                variant="outlined"
+                startIcon={<PhoneIcon />}
+                sx={{ py: 1.5, textTransform: 'none', fontSize: '1rem', fontWeight: 500 }}
+              >
+                Sign Up with Google
+              </Button>
+
+              {/* Security Badges */}
+            </Box>
+          </Box>
+        </Box>
+      </Grid>
+
+      {/* Illustration Side */}
+      <Grid sx={styles.illustrationSide}>
+         <Box sx={{ maxWidth: '450px' }}>
+             <Box sx={styles.illustrationImageContainer}>
+                 <Box
+                     component="img"
+                     src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTp4AAA5KVlYeRUWU9KudBlXo91gftaDf0pdQ&s" // Use actual image URL
+                     alt="Illustration of secure data management"
+                     sx={styles.illustrationImage}
+                 />
+            </Box>
+          <Typography variant="h5" component="h2" fontWeight="bold" gutterBottom>
+            Secure & Compliant Business Invoicing
+          </Typography>
+          <Typography color="text.secondary">
+            Our platform ensures enterprise-grade security and full compliance with industry regulations, safeguarding your financial data.
+          </Typography>
+        </Box>
+      </Grid>
+    </Grid>
+  );
 }
-export default SignUpScreen

@@ -1,347 +1,435 @@
-// src/components/DashboardScreen.tsx
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  LayoutDashboard,
-  Receipt,
-  Users,
-  BarChart,
-  Settings,
-  LogOut,
-  Search,
-  Bell,
-  PlusCircle,
-  UserPlus,
-  BarChart3,
-  TrendingUp,
-  Hourglass,
-  Landmark,
-  ArrowUp,
-} from "lucide-react";
+// client/src/components/app/DashboardScreen.tsx
+import React, { useState } from 'react';
+import api from '@/lib/api';
+import { useQuery } from '@tanstack/react-query';
 
-// Helper component for Stat Cards
-const StatCard = ({ title, value, icon, iconClass }: any) => (
-  <Card>
-    <CardHeader className="flex flex-row items-center justify-between pb-2">
-      <CardTitle className="text-base font-medium text-gray-500 dark:text-gray-400">
-        {title}
-      </CardTitle>
-      {icon}
-    </CardHeader>
-    <CardContent>
-      <div className={`text-3xl font-bold ${iconClass}`}>{value}</div>
+// MUI Imports
+import Box from '@mui/material/Box';
+import Drawer from '@mui/material/Drawer';
+import AppBar from '@mui/material/AppBar';
+import Toolbar from '@mui/material/Toolbar';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemButton from '@mui/material/ListItemButton';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Typography from '@mui/material/Typography';
+import InputBase from '@mui/material/InputBase';
+import IconButton from '@mui/material/IconButton';
+import Avatar from '@mui/material/Avatar';
+import Badge from '@mui/material/Badge';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Grid from '@mui/material/Grid'; // Using Grid v2 syntax
+import Paper from '@mui/material/Paper';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import Chip from '@mui/material/Chip';
+import Skeleton from '@mui/material/Skeleton'; // For loading states
+import { styled, alpha } from '@mui/material/styles';
+
+// Icon Imports
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'; // Using this instead of all_inbox
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import PeopleIcon from '@mui/icons-material/People';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import SettingsIcon from '@mui/icons-material/Settings';
+import LogoutIcon from '@mui/icons-material/Logout';
+import SearchIcon from '@mui/icons-material/Search';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import AddCircleIcon from '@mui/icons-material/AddCircle';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import AssessmentIcon from '@mui/icons-material/Assessment';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import HourglassTopIcon from '@mui/icons-material/HourglassTop';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import MenuIcon from '@mui/icons-material/Menu'; // For mobile drawer toggle
+
+const drawerWidth = 256; // Width of the sidebar
+
+// Styled components for Search Bar (optional, can use sx prop too)
+const Search = styled('div')(({ theme }) => ({
+  position: 'relative',
+  borderRadius: theme.shape.borderRadius,
+  backgroundColor: alpha(theme.palette.common.black, 0.05), // Light background
+  '&:hover': {
+    backgroundColor: alpha(theme.palette.common.black, 0.08),
+  },
+  marginRight: theme.spacing(2),
+  marginLeft: 0,
+  width: '100%',
+  [theme.breakpoints.up('sm')]: {
+    marginLeft: theme.spacing(3),
+    width: 'auto',
+  },
+}));
+
+const SearchIconWrapper = styled('div')(({ theme }) => ({
+  padding: theme.spacing(0, 2),
+  height: '100%',
+  position: 'absolute',
+  pointerEvents: 'none',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+}));
+
+const StyledInputBase = styled(InputBase)(({ theme }) => ({
+  color: 'inherit',
+  '& .MuiInputBase-input': {
+    padding: theme.spacing(1, 1, 1, 0),
+    paddingLeft: `calc(1em + ${theme.spacing(4)})`,
+    transition: theme.transitions.create('width'),
+    width: '100%',
+    [theme.breakpoints.up('md')]: {
+      width: '20ch',
+    },
+  },
+}));
+
+// Define types for the data (same as before)
+interface DashboardStats {
+  totalInvoices: number;
+  pendingPayments: number;
+  gstCollected: number;
+  gstPaid: number;
+}
+
+interface RecentInvoice {
+  id: string;
+  invoiceNumber: string;
+  clientName: string;
+  date: string; // Formatted date string
+  amount: number;
+  status: 'PAID' | 'PENDING' | 'OVERDUE'; // Match your backend enum/status
+}
+
+// API fetching functions (same as before)
+const fetchDashboardStats = async (): Promise<DashboardStats> => {
+  const { data } = await api.get('/dashboard/stats'); // Adjust endpoint if needed
+  return data;
+};
+
+const fetchRecentInvoices = async (): Promise<RecentInvoice[]> => {
+  const { data } = await api.get('/dashboard/recent-invoices'); // Adjust endpoint if needed
+  return data;
+};
+
+// --- Helper Components ---
+const StatCard = ({ title, value, icon, isLoading }: { title: string, value: string, icon: React.ReactNode, isLoading: boolean }) => (
+  <Card sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <CardContent sx={{ flexGrow: 1 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+        <Typography sx={{ fontSize: 14 }} color="text.secondary" gutterBottom>
+          {title}
+        </Typography>
+        {icon}
+      </Box>
+      <Typography variant="h5" component="div" fontWeight="bold">
+        {isLoading ? <Skeleton variant="text" width={100} /> : value}
+      </Typography>
     </CardContent>
   </Card>
 );
 
-// Helper component for Recent Invoices Table Row
-const InvoiceRow = ({ id, client, date, amount, status, statusClass }: any) => (
-  <TableRow className="cursor-pointer">
-    <TableCell className="font-medium text-primary">{id}</TableCell>
-    <TableCell>{client}</TableCell>
-    <TableCell className="text-gray-500 dark:text-gray-400">{date}</TableCell>
-    <TableCell>{amount}</TableCell>
-    <TableCell>
-      <span
-        className={`px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}`}
-      >
-        {status}
-      </span>
-    </TableCell>
-  </TableRow>
-);
+const getStatusChipColor = (status: RecentInvoice['status']): "success" | "warning" | "error" | "default" => {
+  switch (status) {
+    case 'PAID': return 'success';
+    case 'PENDING': return 'warning';
+    case 'OVERDUE': return 'error';
+    default: return 'default';
+  }
+};
 
 export function DashboardScreen() {
-  const chartData = [
-    { height: "60%" },
-    { height: "40%" },
-    { height: "80%", active: true },
-    { height: "50%" },
-    { height: "70%" },
-    { height: "30%" },
-    { height: "90%" },
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const { data: stats, isLoading: isLoadingStats } = useQuery({
+    queryKey: ['dashboardStats'],
+    queryFn: fetchDashboardStats,
+  });
+
+  const { data: recentInvoices, isLoading: isLoadingInvoices } = useQuery({
+    queryKey: ['recentInvoices'],
+    queryFn: fetchRecentInvoices,
+  });
+
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
+  };
+
+  const drawerItems = [
+    { text: 'Dashboard', icon: <DashboardIcon />, active: true },
+    { text: 'Invoices', icon: <ReceiptLongIcon /> },
+    { text: 'Clients', icon: <PeopleIcon /> },
+    { text: 'Reports', icon: <BarChartIcon /> },
   ];
-  const chartLabels = [
-    "Week 1",
-    "Week 2",
-    "Week 3",
-    "Week 4",
-    "Week 5",
-    "Week 6",
-    "Week 7",
+
+  const drawerBottomItems = [
+    { text: 'Settings', icon: <SettingsIcon /> },
+    { text: 'Log Out', icon: <LogoutIcon /> },
   ];
+
+  const drawerContent = (
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Logo/Title */}
+      <Toolbar sx={{ display: 'flex', alignItems: 'center', gap: 1, px: [2] }}>
+        <ReceiptLongIcon color="primary" sx={{ fontSize: 30 }}/>
+        <Typography variant="h6" noWrap component="div" fontWeight="bold">
+          GST Invoice
+        </Typography>
+      </Toolbar>
+      <List sx={{ flexGrow: 1 }}>
+        {drawerItems.map((item) => (
+          <ListItem key={item.text} disablePadding>
+            <ListItemButton selected={item.active}>
+              <ListItemIcon sx={{ color: item.active ? 'primary.main' : 'inherit' }}>
+                {item.icon}
+              </ListItemIcon>
+              <ListItemText primary={item.text} sx={{ color: item.active ? 'primary.main' : 'inherit' }} />
+            </ListItemButton>
+          </ListItem>
+        ))}
+      </List>
+      <List>
+        {drawerBottomItems.map((item) => (
+          <ListItem key={item.text} disablePadding>
+            <ListItemButton>
+              <ListItemIcon>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.text} />
+            </ListItemButton>
+          </ListItem>
+        ))}
+      </List>
+    </Box>
+  );
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col lg:flex-row bg-background-light dark:bg-background-dark text-[#111618] dark:text-white">
-      {/* Sidebar */}
-      <div className="hidden lg:flex lg:flex-col lg:w-64 bg-white dark:bg-background-dark border-r border-gray-200 dark:border-gray-700">
-        <div className="flex h-full min-h-0 flex-col justify-between p-4">
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-3 p-2">
-              <div className="flex items-center gap-2 text-primary">
-                <Receipt className="h-8 w-8" />
-                <h2 className="text-[#111618] dark:text-white text-xl font-bold">
-                  GST Invoice
-                </h2>
-              </div>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Button
-                variant="ghost"
-                className="flex items-center justify-start gap-3 px-3 py-2 rounded-lg bg-primary/20 text-primary hover:bg-primary/20"
-              >
-                <LayoutDashboard className="h-5 w-5" />
-                <p className="text-sm font-medium">Dashboard</p>
-              </Button>
-              <Button
-                variant="ghost"
-                className="flex items-center justify-start gap-3 px-3 py-2 rounded-lg hover:bg-primary/10 dark:hover:bg-primary/20"
-              >
-                <Receipt className="h-5 w-5" />
-                <p className="text-sm font-medium">Invoices</p>
-              </Button>
-              <Button
-                variant="ghost"
-                className="flex items-center justify-start gap-3 px-3 py-2 rounded-lg hover:bg-primary/10 dark:hover:bg-primary/20"
-              >
-                <Users className="h-5 w-5" />
-                <p className="text-sm font-medium">Clients</p>
-              </Button>
-              <Button
-                variant="ghost"
-                className="flex items-center justify-start gap-3 px-3 py-2 rounded-lg hover:bg-primary/10 dark:hover:bg-primary/20"
-              >
-                <BarChart className="h-5 w-5" />
-                <p className="text-sm font-medium">Reports</p>
-              </Button>
-            </div>
-          </div>
-          <div className="flex flex-col gap-2">
-            <Button
-              variant="ghost"
-              className="flex items-center justify-start gap-3 px-3 py-2 rounded-lg hover:bg-primary/10 dark:hover:bg-primary/20"
-            >
-              <Settings className="h-5 w-5" />
-              <p className="text-sm font-medium">Settings</p>
-            </Button>
-            <Button
-              variant="ghost"
-              className="flex items-center justify-start gap-3 px-3 py-2 rounded-lg hover:bg-primary/10 dark:hover:bg-primary/20"
-            >
-              <LogOut className="h-5 w-5" />
-              <p className="text-sm font-medium">Log Out</p>
-            </Button>
-          </div>
-        </div>
-      </div>
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+      {/* --- Sidebar --- */}
+      <Box
+        component="nav"
+        sx={{ width: { lg: drawerWidth }, flexShrink: { lg: 0 } }}
+        aria-label="mailbox folders"
+      >
+        {/* Mobile Drawer */}
+        <Drawer
+          variant="temporary"
+          open={mobileOpen}
+          onClose={handleDrawerToggle}
+          ModalProps={{ keepMounted: true }} // Better open performance on mobile.
+          sx={{
+            display: { xs: 'block', lg: 'none' },
+            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+          }}
+        >
+          {drawerContent}
+        </Drawer>
+        {/* Desktop Drawer */}
+        <Drawer
+          variant="permanent"
+          sx={{
+            display: { xs: 'none', lg: 'block' },
+            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth, borderRight: '1px solid rgba(0, 0, 0, 0.12)' },
+          }}
+          open
+        >
+          {drawerContent}
+        </Drawer>
+      </Box>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <header className="flex items-center justify-between whitespace-nowrap border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 lg:px-8 py-4 bg-white dark:bg-background-dark">
-          <div className="flex items-center gap-4 lg:hidden">
-            <Receipt className="h-8 w-8 text-primary" />
-            <h2 className="text-[#111618] dark:text-white text-xl font-bold">
-              GST Invoice
-            </h2>
-          </div>
-          <div className="hidden sm:flex items-center gap-8">
-            <div className="relative flex items-center">
-              <Search className="absolute left-3 h-5 w-5 text-gray-500 dark:text-gray-400" />
-              <Input
-                className="w-full min-w-0 resize-none overflow-hidden rounded-lg text-[#111618] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary border-gray-300 dark:border-gray-600 bg-background-light dark:bg-gray-800 h-10 placeholder:text-gray-500 dark:placeholder-gray-400 px-10 text-sm font-normal"
-                placeholder="Search invoices..."
+      {/* --- Main Content Area --- */}
+      <Box
+        component="main"
+        sx={{ flexGrow: 1, bgcolor: 'grey.100', // background-light equivalent
+               width: { lg: `calc(100% - ${drawerWidth}px)` } }}
+      >
+        {/* --- Header / AppBar --- */}
+        <AppBar
+          position="sticky" // Keeps header visible on scroll
+          sx={{
+            boxShadow: 'none',
+            borderBottom: '1px solid rgba(0, 0, 0, 0.12)',
+            backgroundColor: 'background.paper', // White background
+            color: 'text.primary', // Black text
+            // width: { lg: `calc(100% - ${drawerWidth}px)` }, // Makes AppBar align with content
+            // ml: { lg: `${drawerWidth}px` }, // Offset for drawer
+          }}
+        >
+          <Toolbar>
+            {/* Mobile Menu Button */}
+            <IconButton
+              color="inherit"
+              aria-label="open drawer"
+              edge="start"
+              onClick={handleDrawerToggle}
+              sx={{ mr: 2, display: { lg: 'none' } }}
+            >
+              <MenuIcon />
+            </IconButton>
+
+            {/* Search Bar */}
+            <Search sx={{ display: { xs: 'none', sm: 'block' } }}>
+              <SearchIconWrapper>
+                <SearchIcon />
+              </SearchIconWrapper>
+              <StyledInputBase
+                placeholder="Search invoices…"
+                inputProps={{ 'aria-label': 'search' }}
               />
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="flex items-center justify-center rounded-full h-10 w-10 bg-background-light dark:bg-gray-800 text-[#111618] dark:text-white"
-            >
-              <Bell className="h-5 w-5" />
-            </Button>
-            <div className="flex items-center gap-3">
-              <Avatar className="h-10 w-10">
-                <AvatarImage src="https://github.com/shadcn.png" />
-                <AvatarFallback>TA</AvatarFallback>
-              </Avatar>
-              <div className="hidden md:flex flex-col">
-                <p className="text-[#111618] dark:text-white text-sm font-medium">
-                  Tarun
-                </p>
-                <p className="text-gray-500 dark:text-gray-400 text-xs">
-                  Acme Inc.
-                </p>
-              </div>
-            </div>
-          </div>
-        </header>
+            </Search>
 
-        {/* Page Content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">
-          <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
-            <div className="flex flex-col">
-              <h1 className="text-[#111618] dark:text-white text-3xl font-bold tracking-tight">
-                Dashboard
-              </h1>
-              <p className="text-gray-500 dark:text-gray-400 text-base">
-                Here's a summary of your business.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button className="flex items-center justify-center gap-2 rounded-lg h-10 px-4 text-sm font-bold">
-                <PlusCircle className="h-5 w-5" />
-                <span>Create New Invoice</span>
-              </Button>
-              <Button
-                variant="secondary"
-                className="flex items-center justify-center gap-2 rounded-lg h-10 px-4 bg-gray-200 dark:bg-gray-700 text-[#111618] dark:text-white text-sm font-bold"
-              >
-                <UserPlus className="h-5 w-5" />
-                <span>Add New Client</span>
-              </Button>
-              <Button
-                variant="secondary"
-                className="flex items-center justify-center gap-2 rounded-lg h-10 px-4 bg-gray-200 dark:bg-gray-700 text-[#111618] dark:text-white text-sm font-bold"
-              >
-                <BarChart3 className="h-5 w-5" />
-                <span>Generate GST Report</span>
-              </Button>
-            </div>
-          </div>
+            <Box sx={{ flexGrow: 1 }} /> {/* Spacer */}
+
+            {/* Right Side Icons/Avatar */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <IconButton color="inherit">
+                <Badge badgeContent={4} color="error"> {/* Example badge */}
+                  <NotificationsIcon />
+                </Badge>
+              </IconButton>
+              <Avatar
+                alt="Tarun Acme Inc."
+                src="https://via.placeholder.com/40" // Replace with actual image URL or leave blank for initials
+                sx={{ width: 40, height: 40, ml: 1 }}
+              />
+              <Box sx={{ display: { xs: 'none', md: 'flex' }, flexDirection: 'column', ml: 1, lineHeight: 1.2 }}>
+                 <Typography variant="body2" fontWeight="medium">Tarun</Typography>
+                 <Typography variant="caption" color="text.secondary">Acme Inc.</Typography>
+              </Box>
+            </Box>
+          </Toolbar>
+        </AppBar>
+
+        {/* --- Page Content --- */}
+        <Box sx={{ p: { xs: 2, sm: 3 } }}> {/* Padding for content */}
+          {/* Header Section */}
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 2, mb: 3 }}>
+            <Box>
+              <Typography variant="h4" component="h1" fontWeight="bold">Dashboard</Typography>
+              <Typography color="text.secondary">Here's a summary of your business.</Typography>
+            </Box>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              <Button variant="contained" startIcon={<AddCircleIcon />}>Create New Invoice</Button>
+              <Button variant="outlined" startIcon={<PersonAddIcon />}>Add New Client</Button>
+              <Button variant="outlined" startIcon={<AssessmentIcon />}>Generate GST Report</Button>
+            </Box>
+          </Box>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-            <StatCard
-              title="Total Invoices"
-              value="1,250"
-              icon={<TrendingUp className="text-green-500 h-5 w-5" />}
-            />
-            <StatCard
-              title="Pending Payments"
-              value="₹50,000"
-              icon={<Hourglass className="text-orange-500 h-5 w-5" />}
-            />
-            <StatCard
-              title="GST Collected/Paid"
-              value="₹12.5k / ₹7.5k"
-              icon={<Landmark className="text-blue-500 h-5 w-5" />}
-            />
-          </div>
+          <Grid container spacing={3} sx={{ mb: 3 }}>
+            <Grid >
+              <StatCard
+                title="Total Invoices"
+                value={stats?.totalInvoices.toLocaleString() ?? '...'}
+                icon={<TrendingUpIcon color="success" />}
+                isLoading={isLoadingStats}
+              />
+            </Grid>
+            <Grid >
+              <StatCard
+                title="Pending Payments"
+                value={`₹${stats?.pendingPayments.toLocaleString() ?? '...'}`}
+                icon={<HourglassTopIcon color="warning" />}
+                isLoading={isLoadingStats}
+              />
+            </Grid>
+            <Grid >
+              <StatCard
+                title="GST Collected/Paid"
+                value={`₹${stats?.gstCollected.toLocaleString() ?? '...'}k / ₹${stats?.gstPaid.toLocaleString() ?? '...'}k`}
+                icon={<AccountBalanceIcon color="primary" />}
+                isLoading={isLoadingStats}
+              />
+            </Grid>
+          </Grid>
 
           {/* Invoice Summary Card */}
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="text-lg font-bold">
+          <Card sx={{ mb: 3 }}>
+            <CardContent>
+              <Typography variant="h6" component="div" fontWeight="bold">
                 Invoice Summary - Last 30 Days
-              </CardTitle>
-              <div className="flex items-baseline gap-2">
-                <p className="text-4xl font-bold">₹1,20,000</p>
-                <p className="text-green-500 text-sm font-medium flex items-center gap-1">
-                  <ArrowUp className="h-4 w-4" />
-                  <span>10%</span>
-                </p>
-              </div>
-            </CardHeader>
-            <CardContent className="h-60">
-              <div className="grid h-full grid-flow-col gap-4 grid-rows-[1fr_auto] items-end justify-items-center">
-                {chartData.map((bar, index) => (
-                  <div
-                    key={index}
-                    className={`${
-                      bar.active
-                        ? "bg-primary"
-                        : "bg-primary/20 dark:bg-primary/40"
-                    } w-full rounded-t-lg`}
-                    style={{ height: bar.height }}
-                  ></div>
-                ))}
-                {chartLabels.map((label, index) => (
-                  <p
-                    key={index}
-                    className="text-gray-500 dark:text-gray-400 text-xs text-center"
-                  >
-                    {label}
-                  </p>
-                ))}
-              </div>
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mt: 1 }}>
+                <Typography variant="h4" component="p" fontWeight="bold">
+                   {isLoadingStats ? <Skeleton width={150} /> : '₹1,20,000'} {/* Example static data */}
+                </Typography>
+                <Typography color="success.main" sx={{ display: 'flex', alignItems: 'center', fontSize: '0.875rem' }}>
+                  <ArrowUpwardIcon sx={{ fontSize: '1rem', mr: 0.5 }}/> 10% {/* Example static data */}
+                </Typography>
+              </Box>
+               {/* TODO: Add Chart component here */}
+              <Box sx={{ height: 240, mt: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'text.secondary', border: '1px dashed grey' }}>
+                Chart Placeholder
+              </Box>
             </CardContent>
           </Card>
 
           {/* Recent Invoices Table */}
           <Card>
-            <CardHeader>
-              <h3 className="text-lg font-bold">Recent Invoices</h3>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Invoice #</TableHead>
-                      <TableHead>Client Name</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <InvoiceRow
-                      id="INV-001"
-                      client="Innovate Inc."
-                      date="15 Aug, 2023"
-                      amount="₹15,000"
-                      status="Paid"
-                      statusClass="bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300"
-                    />
-                    <InvoiceRow
-                      id="INV-002"
-                      client="Future Forward"
-                      date="12 Aug, 2023"
-                      amount="₹8,500"
-                      status="Pending"
-                      statusClass="bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300"
-                    />
-                    <InvoiceRow
-                      id="INV-003"
-                      client="Quantum Leap"
-                      date="05 Aug, 2023"
-                      amount="₹22,000"
-                      status="Overdue"
-                      statusClass="bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300"
-                    />
-                    <InvoiceRow
-                      id="INV-004"
-                      client="Synergy Solutions"
-                      date="01 Aug, 2023"
-                      amount="₹5,000"
-                      status="Paid"
-                      statusClass="bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300"
-                    />
-                  </TableBody>
-                </Table>
-              </div>
+             <CardContent sx={{ pb: 0 }}>
+               <Typography variant="h6" component="div" fontWeight="bold">
+                 Recent Invoices
+               </Typography>
             </CardContent>
+            <TableContainer component={Paper} elevation={0} square>
+              <Table sx={{ minWidth: 650 }} aria-label="recent invoices table">
+                <TableHead sx={{ backgroundColor: 'grey.50' }}>
+                  <TableRow>
+                    <TableCell>Invoice #</TableCell>
+                    <TableCell>Client Name</TableCell>
+                    <TableCell>Date</TableCell>
+                    <TableCell>Amount</TableCell>
+                    <TableCell>Status</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {isLoadingInvoices ? (
+                    // Skeleton rows for loading state
+                    [...Array(4)].map((_, index) => (
+                      <TableRow key={index}>
+                        <TableCell><Skeleton /></TableCell>
+                        <TableCell><Skeleton /></TableCell>
+                        <TableCell><Skeleton /></TableCell>
+                        <TableCell><Skeleton /></TableCell>
+                        <TableCell><Skeleton /></TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    recentInvoices?.map((invoice) => (
+                      <TableRow
+                        key={invoice.invoiceNumber}
+                        hover
+                        sx={{ '&:last-child td, &:last-child th': { border: 0 }, cursor: 'pointer' }}
+                      >
+                        <TableCell component="th" scope="row" sx={{ color: 'primary.main', fontWeight: 'medium' }}>
+                          {invoice.invoiceNumber}
+                        </TableCell>
+                        <TableCell>{invoice.clientName}</TableCell>
+                        <TableCell sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>{invoice.date}</TableCell>
+                        <TableCell>₹{invoice.amount.toLocaleString()}</TableCell>
+                        <TableCell>
+                          <Chip label={invoice.status} color={getStatusChipColor(invoice.status)} size="small" />
+                        </TableCell>
+                      </TableRow>
+                    )) ?? ( // Handle case where data is undefined/null after loading
+                       <TableRow>
+                           <TableCell colSpan={5} align="center">No recent invoices found.</TableCell>
+                       </TableRow>
+                    )
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </Card>
-        </main>
-      </div>
-    </div>
+        </Box>
+      </Box>
+    </Box>
   );
 }

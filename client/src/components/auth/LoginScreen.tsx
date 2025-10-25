@@ -1,28 +1,114 @@
-// src/components/LoginScreen.tsx
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Receipt, Eye, Chrome } from "lucide-react";
-import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/context/AuthContext";
-import api from "@/lib/api";
+// client/src/components/auth/LoginScreen.tsx
+import React, { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
+import api from '@/lib/api';
 
-function LoginScreen() {
-   
+// MUI Imports
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import Link from '@mui/material/Link';
+import TextField from '@mui/material/TextField';
+import Button from '@mui/material/Button';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import Divider from '@mui/material/Divider';
+import InputAdornment from '@mui/material/InputAdornment';
+import IconButton from '@mui/material/IconButton';
+import CircularProgress from '@mui/material/CircularProgress';
+
+// Icon Imports
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import GoogleIcon from '@mui/icons-material/Google'; // Or use an img tag if you prefer the exact logo
+
+// Define styles (reusing from SignUpScreen where applicable)
+const styles = {
+  root: {
+    minHeight: '100vh',
+    display: 'flex',
+    flexDirection: { xs: 'column', lg: 'row' },
+  },
+  formSide: {
+    flex: '1 1 0%',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: { xs: 2, lg: 8 },
+    backgroundColor: 'background.paper',
+  },
+  illustrationSide: {
+    flex: '1 1 0%',
+    display: { xs: 'none', lg: 'flex' },
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 8,
+    backgroundColor: 'primary.lightest', // Example fallback
+    textAlign: 'center',
+  },
+  logoLink: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 1,
+    textDecoration: 'none',
+    color: 'text.primary',
+    marginBottom: 4,
+  },
+  formContainer: {
+    width: '100%',
+    maxWidth: '450px',
+  },
+  tabs: {
+    borderBottom: 1,
+    borderColor: 'divider',
+    marginBottom: 3,
+  },
+  tab: {
+    textTransform: 'none',
+    fontWeight: 'bold',
+    fontSize: '0.875rem',
+  },
+  inputLabel: {
+    fontWeight: 500,
+    marginBottom: 1,
+  },
+  dividerContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 2,
+    margin: '16px 0',
+  },
+  illustrationImageContainer: {
+     maxWidth: '320px',
+     margin: '0 auto 32px auto',
+  },
+   illustrationImage: {
+    width: '100%',
+    height: 'auto',
+    backgroundSize: 'contain',
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'center',
+  },
+};
+
+export function LoginScreen() {
+  const [tabValue, setTabValue] = useState('login'); // Default to login tab
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  const { setToken } = useAuth(); // Get from context
+  const { setToken } = useAuth();
 
   const mutation = useMutation({
     mutationFn: (credentials: any) => {
       return api.post('/auth/login', credentials);
     },
     onSuccess: (data) => {
-      setToken(data.data.token); // Save token
-      navigate('/dashboard'); // Redirect to dashboard
+      setToken(data.data.token);
+      navigate('/dashboard');
     },
     onError: (error: any) => {
       alert(error.response?.data?.message || 'Login failed');
@@ -34,147 +120,163 @@ function LoginScreen() {
     mutation.mutate({ email, password });
   };
 
-  // ... (return statement)
+  const handleTabChange = (event: React.SyntheticEvent, newValue: string) => {
+    setTabValue(newValue);
+    if (newValue === 'signup') {
+      navigate('/signup'); // Navigate if Sign Up tab is clicked
+    }
+  };
+
+  const handleClickShowPassword = () => setShowPassword((show) => !show);
+  const handleMouseDownPassword = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+  };
+
   return (
-    <div className="relative flex min-h-screen w-full flex-col">
-      <div className="flex flex-1 w-full">
-        <div className="flex flex-1 flex-col justify-center items-center p-4 lg:p-8">
-          <div className="w-full max-w-md">
-            <div className="mb-8 text-center lg:text-left">
-              <a
-                className="inline-flex items-center gap-2 text-2xl font-bold text-gray-800 dark:text-white"
-                href="#"
-              >
-                <Receipt className="h-8 w-8 text-primary" />
-                <span>GST-Invoice</span>
-              </a>
-            </div>
-            <div className="flex flex-col gap-8">
-              <div className="flex flex-col gap-3">
-                <p className="text-[#111618] dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">
-                  Welcome Back
-                </p>
-                <p className="text-[#617c89] dark:text-gray-300 text-base font-normal leading-normal">
-                  Login to your account to manage your invoices.
-                </p>
-              </div>
-              <Tabs defaultValue="login" className="pb-3">
-                <TabsList className="grid w-full grid-cols-2 gap-8 border-b border-[#dbe2e6] dark:border-gray-700 rounded-none bg-transparent p-0">
-                  <TabsTrigger
-                    value="login"
-                    className="rounded-none border-b-[3px] border-b-transparent data-[state=active]:border-b-primary data-[state=active]:text-primary pb-[13px] pt-4 text-sm font-bold"
-                  >
-                    Login
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="signup"
-                    className="rounded-none border-b-[3px] border-b-transparent data-[state=active]:border-b-primary data-[state=active]:text-primary pb-[13px] pt-4 text-sm font-bold text-[#617c89] dark:text-gray-400"
-                  >
-                    Sign Up
-                  </TabsTrigger>
-                </TabsList>
+    <Box sx={styles.root}>
+      {/* Form Side */}
+      <Box sx={styles.formSide}>
+        <Box sx={styles.formContainer}>
+          {/* Logo */}
+          <Box sx={{ textAlign: { xs: 'center', lg: 'left' } }}>
+            <Link href="#" sx={styles.logoLink}>
+              <ReceiptLongIcon sx={{ fontSize: '32px', color: 'primary.main' }} />
+              <Typography variant="h5" component="span" fontWeight="bold">
+                GST-Invoice
+              </Typography>
+            </Link>
+          </Box>
+
+          <Box sx={{ mt: 4 }}>
+            {/* Titles */}
+            <Typography variant="h4" component="p" fontWeight="900" gutterBottom>
+              Welcome Back
+            </Typography>
+            <Typography variant="body1" color="text.secondary" gutterBottom>
+              Login to your account to manage your invoices.
+            </Typography>
+
+            {/* Tabs */}
+            <Box sx={styles.tabs}>
+              <Tabs value={tabValue} onChange={handleTabChange} variant="fullWidth">
+                <Tab label="Login" value="login" sx={styles.tab} />
+                <Tab label="Sign Up" value="signup" sx={styles.tab} />
               </Tabs>
-              <form className="flex flex-col gap-6 " onSubmit={handleSubmit}>
-                <div className="flex flex-col gap-2">
-                  <label
-                    htmlFor="email"
-                    className="text-[#111618] dark:text-gray-200 text-base font-medium leading-normal"
-                  >
-                    Email Address
-                  </label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="Enter your email address"
-                    className="h-14 p-[15px]"
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <label
-                    htmlFor="password"
-                    className="text-[#111618] dark:text-gray-200 text-base font-medium leading-normal"
-                  >
-                    Password
-                  </label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="Enter your password"
-                      className="h-14 p-[15px] pr-12"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                    <Button
-                      aria-label="Toggle password visibility"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-1 top-1/2 -translate-y-1/2 h-12 w-12 text-[#617c89] dark:text-gray-400"
-                    >
-                      <Eye className="h-5 w-5" />
-                    </Button>
-                  </div>
-                </div>
-                <a
-                  href="#"
-                  className="text-primary text-sm font-normal leading-normal self-start underline cursor-pointer"
-                >
-                  Forgot Password?
-                </a>
-                <Button
-                  type="submit"
-                  className="h-14 text-base font-bold"
-                  disabled={mutation.isPending}
-                >
-                  {mutation.isPending ? 'Logging in...' : 'Login'}
-                </Button>
-                <div className="flex items-center gap-4">
-                  <hr className="flex-1 border-t border-[#dbe2e6] dark:border-gray-700" />
-                  <p className="text-[#617c89] dark:text-gray-400 text-sm">or</p>
-                  <hr className="flex-1 border-t border-[#dbe2e6] dark:border-gray-700" />
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-14 text-base font-medium"
-                >
-                  <Chrome className="mr-3 h-6 w-6" />
-                  Continue with Google
-                </Button>
-              </form>
-            </div>
-            <div className="mt-8 text-center text-sm text-[#617c89] dark:text-gray-400">
-              <p>
-                <a className="underline hover:text-primary" href="#">
-                  Terms of Service
-                </a>{" "}
-                •{" "}
-                <a className="underline hover:text-primary" href="#">
-                  Privacy Policy
-                </a>
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="hidden lg:flex flex-1 bg-primary/10 dark:bg-primary/20 items-center justify-center p-8">
-          <div className="max-w-md text-center">
-            <img
-              src="https://storage.googleapis.com/stitch-assets/static/assets/images/stitch_login_signup/login/signup_2/illustration.png"
-              alt="Illustration of a person analyzing financial charts"
-              className="w-full max-w-xs mx-auto mb-8"
-            />
-            <h2 className="text-3xl font-bold text-[#111618] dark:text-white mb-4">
-              Simplify Your GST Invoicing
-            </h2>
-            <p className="text-[#617c89] dark:text-gray-300">
-              Create, send, and track GST-compliant invoices in minutes. Join
-              thousands of businesses who trust us to streamline their finances.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
+            </Box>
+
+            {/* Form */}
+            <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Box>
+                <Typography variant="body1" sx={styles.inputLabel}>Email Address</Typography>
+                <TextField
+                  required
+                  fullWidth
+                  id="email"
+                  placeholder="Enter your email address"
+                  name="email"
+                  autoComplete="email"
+                  autoFocus
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  size="medium"
+                />
+              </Box>
+              <Box>
+                 <Typography variant="body1" sx={styles.inputLabel}>Password</Typography>
+                <TextField
+                  required
+                  fullWidth
+                  name="password"
+                  placeholder="Enter your password"
+                  type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  size="medium"
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="toggle password visibility"
+                          onClick={handleClickShowPassword}
+                          onMouseDown={handleMouseDownPassword}
+                          edge="end"
+                        >
+                          {showPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Box>
+
+              <Link
+                href="#"
+                variant="body2"
+                underline="hover"
+                sx={{ alignSelf: 'flex-start', mt: 1 }} // Align link to the left
+              >
+                Forgot Password?
+              </Link>
+
+              <Button
+                type="submit"
+                fullWidth
+                variant="contained"
+                disabled={mutation.isPending}
+                sx={{ mt: 3, mb: 2, py: 1.5, textTransform: 'none', fontSize: '1rem', fontWeight: 'bold' }}
+              >
+                {mutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Login'}
+              </Button>
+
+              <Box sx={styles.dividerContainer}>
+                <Divider sx={{ flexGrow: 1 }} />
+                <Typography variant="body2" color="text.secondary">or</Typography>
+                <Divider sx={{ flexGrow: 1 }} />
+              </Box>
+
+              <Button
+                type="button"
+                fullWidth
+                variant="outlined"
+                startIcon={<GoogleIcon />} // Use MUI Google icon or img tag
+                sx={{ py: 1.5, textTransform: 'none', fontSize: '1rem', fontWeight: 500 }}
+              >
+                Continue with Google
+              </Button>
+            </Box>
+          </Box>
+           <Box sx={{ mt: 8, textAlign: 'center' }}>
+             <Typography variant="body2" color="text.secondary">
+               <Link href="#" underline="hover">Terms of Service</Link> •{' '}
+               <Link href="#" underline="hover">Privacy Policy</Link>
+             </Typography>
+           </Box>
+        </Box>
+      </Box>
+
+      {/* Illustration Side */}
+      <Box sx={styles.illustrationSide}>
+         <Box sx={{ maxWidth: '450px' }}>
+             <Box sx={styles.illustrationImageContainer}>
+                 <Box
+                     component="img"
+                     // Use the illustration URL from the original HTML
+                     src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTp4AAA5KVlYeRUWU9KudBlXo91gftaDf0pdQ&s"
+                     alt="Illustration of a person analyzing financial charts"
+                     sx={styles.illustrationImage}
+                 />
+            </Box>
+          <Typography variant="h5" component="h2" fontWeight="bold" gutterBottom>
+            Simplify Your GST Invoicing
+          </Typography>
+          <Typography color="text.secondary">
+            Create, send, and track GST-compliant invoices in minutes. Join
+            thousands of businesses who trust us to streamline their finances.
+          </Typography>
+        </Box>
+      </Box>
+    </Box>
   );
-    
 }
-export default LoginScreen
