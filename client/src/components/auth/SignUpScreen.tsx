@@ -142,7 +142,7 @@ export function SignUpScreen() {
   return (
     <Grid container sx={styles.root}>
       {/* Form Side */}
-      <Grid  sx={styles.formSide}>
+      <Grid item xs={12} lg={6} sx={styles.formSide}>
         <Box sx={styles.formContainer}>
           {/* Logo */}
           <Box sx={{ textAlign: { xs: 'center', lg: 'left' } }}>
@@ -272,7 +272,7 @@ export function SignUpScreen() {
       </Grid>
 
       {/* Illustration Side */}
-      <Grid sx={styles.illustrationSide}>
+      <Grid item xs={12} lg={6} sx={styles.illustrationSide}>
          <Box sx={{ maxWidth: '450px' }}>
              <Box sx={styles.illustrationImageContainer}>
                  <Box

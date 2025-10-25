@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import api from '@/lib/api';
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 // MUI Imports
 import Box from '@mui/material/Box';
@@ -110,15 +112,27 @@ interface RecentInvoice {
   status: 'PAID' | 'PENDING' | 'OVERDUE'; // Match your backend enum/status
 }
 
-// API fetching functions (same as before)
+// API fetching functions - Updated to match server endpoints
 const fetchDashboardStats = async (): Promise<DashboardStats> => {
-  const { data } = await api.get('/dashboard/stats'); // Adjust endpoint if needed
-  return data;
+  const { data } = await api.get('/invoices/summary');
+  return {
+    totalInvoices: data.invoiceCount || 0,
+    pendingPayments: data.totalOutstanding || 0,
+    gstCollected: (data.totalCGST || 0) + (data.totalSGST || 0) + (data.totalIGST || 0),
+    gstPaid: data.totalPaid || 0
+  };
 };
 
 const fetchRecentInvoices = async (): Promise<RecentInvoice[]> => {
-  const { data } = await api.get('/dashboard/recent-invoices'); // Adjust endpoint if needed
-  return data;
+  const { data } = await api.get('/invoices?limit=5');
+  return data.invoices?.map((invoice: any) => ({
+    id: invoice._id,
+    invoiceNumber: invoice.invoiceNumber,
+    clientName: invoice.client?.name || 'Unknown Client',
+    date: new Date(invoice.invoiceDate).toLocaleDateString(),
+    amount: invoice.total,
+    status: invoice.status
+  })) || [];
 };
 
 // --- Helper Components ---
@@ -149,6 +163,8 @@ const getStatusChipColor = (status: RecentInvoice['status']): "success" | "warni
 
 export function DashboardScreen() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   const { data: stats, isLoading: isLoadingStats } = useQuery({
     queryKey: ['dashboardStats'],
@@ -164,16 +180,26 @@ export function DashboardScreen() {
     setMobileOpen(!mobileOpen);
   };
 
+  const handleNavigation = (item: any) => {
+    if (item.action === 'logout') {
+      logout();
+      navigate('/login');
+    } else if (item.path) {
+      navigate(item.path);
+    }
+    setMobileOpen(false); // Close mobile drawer after navigation
+  };
+
   const drawerItems = [
-    { text: 'Dashboard', icon: <DashboardIcon />, active: true },
-    { text: 'Invoices', icon: <ReceiptLongIcon /> },
-    { text: 'Clients', icon: <PeopleIcon /> },
-    { text: 'Reports', icon: <BarChartIcon /> },
+    { text: 'Dashboard', icon: <DashboardIcon />, active: true, path: '/dashboard' },
+    { text: 'Invoices', icon: <ReceiptLongIcon />, path: '/invoices' },
+    { text: 'Clients', icon: <PeopleIcon />, path: '/clients' },
+    { text: 'Reports', icon: <BarChartIcon />, path: '/reports/gst' },
   ];
 
   const drawerBottomItems = [
-    { text: 'Settings', icon: <SettingsIcon /> },
-    { text: 'Log Out', icon: <LogoutIcon /> },
+    { text: 'Settings', icon: <SettingsIcon />, path: '/profile' },
+    { text: 'Log Out', icon: <LogoutIcon />, action: 'logout' },
   ];
 
   const drawerContent = (
@@ -188,7 +214,10 @@ export function DashboardScreen() {
       <List sx={{ flexGrow: 1 }}>
         {drawerItems.map((item) => (
           <ListItem key={item.text} disablePadding>
-            <ListItemButton selected={item.active}>
+            <ListItemButton 
+              selected={item.active}
+              onClick={() => handleNavigation(item)}
+            >
               <ListItemIcon sx={{ color: item.active ? 'primary.main' : 'inherit' }}>
                 {item.icon}
               </ListItemIcon>
@@ -200,7 +229,7 @@ export function DashboardScreen() {
       <List>
         {drawerBottomItems.map((item) => (
           <ListItem key={item.text} disablePadding>
-            <ListItemButton>
+            <ListItemButton onClick={() => handleNavigation(item)}>
               <ListItemIcon>{item.icon}</ListItemIcon>
               <ListItemText primary={item.text} />
             </ListItemButton>
@@ -295,13 +324,14 @@ export function DashboardScreen() {
                 </Badge>
               </IconButton>
               <Avatar
-                alt="Tarun Acme Inc."
-                src="https://via.placeholder.com/40" // Replace with actual image URL or leave blank for initials
+                alt={user?.fullName || user?.email || 'User'}
                 sx={{ width: 40, height: 40, ml: 1 }}
-              />
+              >
+                {user?.fullName?.charAt(0) || user?.email?.charAt(0) || 'U'}
+              </Avatar>
               <Box sx={{ display: { xs: 'none', md: 'flex' }, flexDirection: 'column', ml: 1, lineHeight: 1.2 }}>
-                 <Typography variant="body2" fontWeight="medium">Tarun</Typography>
-                 <Typography variant="caption" color="text.secondary">Acme Inc.</Typography>
+                 <Typography variant="body2" fontWeight="medium">{user?.fullName || 'User'}</Typography>
+                 <Typography variant="caption" color="text.secondary">{user?.email}</Typography>
               </Box>
             </Box>
           </Toolbar>
@@ -316,15 +346,26 @@ export function DashboardScreen() {
               <Typography color="text.secondary">Here's a summary of your business.</Typography>
             </Box>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              <Button variant="contained" startIcon={<AddCircleIcon />}>Create New Invoice</Button>
-              <Button variant="outlined" startIcon={<PersonAddIcon />}>Add New Client</Button>
-              <Button variant="outlined" startIcon={<AssessmentIcon />}>Generate GST Report</Button>
+              <Button 
+                variant="contained" 
+                startIcon={<AddCircleIcon />}
+                onClick={() => navigate('/invoices/new')}
+              >
+                Create New Invoice
+              </Button>
+              <Button 
+                variant="outlined" 
+                startIcon={<AssessmentIcon />}
+                onClick={() => navigate('/reports/gst')}
+              >
+                Generate GST Report
+              </Button>
             </Box>
           </Box>
 
           {/* Stats Grid */}
           <Grid container spacing={3} sx={{ mb: 3 }}>
-            <Grid >
+            <Grid item xs={12} sm={6} md={4}>
               <StatCard
                 title="Total Invoices"
                 value={stats?.totalInvoices.toLocaleString() ?? '...'}
@@ -332,7 +373,7 @@ export function DashboardScreen() {
                 isLoading={isLoadingStats}
               />
             </Grid>
-            <Grid >
+            <Grid item xs={12} sm={6} md={4}>
               <StatCard
                 title="Pending Payments"
                 value={`₹${stats?.pendingPayments.toLocaleString() ?? '...'}`}
@@ -340,10 +381,10 @@ export function DashboardScreen() {
                 isLoading={isLoadingStats}
               />
             </Grid>
-            <Grid >
+            <Grid item xs={12} sm={6} md={4}>
               <StatCard
                 title="GST Collected/Paid"
-                value={`₹${stats?.gstCollected.toLocaleString() ?? '...'}k / ₹${stats?.gstPaid.toLocaleString() ?? '...'}k`}
+                value={`₹${stats?.gstCollected.toLocaleString() ?? '...'} / ₹${stats?.gstPaid.toLocaleString() ?? '...'}`}
                 icon={<AccountBalanceIcon color="primary" />}
                 isLoading={isLoadingStats}
               />

@@ -1,6 +1,9 @@
 // client/src/components/app/CreateInvoiceScreen.tsx
-import React, { useState } from 'react';
-// Keep state management for items, form data etc.
+import React, { useState, useEffect } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
+import api from '@/lib/api';
 
 // MUI Imports
 import Box from '@mui/material/Box';
@@ -28,6 +31,9 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import IconButton from '@mui/material/IconButton';
 import Divider from '@mui/material/Divider';
+import Alert from '@mui/material/Alert';
+import Snackbar from '@mui/material/Snackbar';
+import CircularProgress from '@mui/material/CircularProgress';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 // Ensure LocalizationProvider wraps app in main.tsx
 
@@ -56,22 +62,65 @@ interface InvoiceItem {
   amount: number; // Calculated: quantity * rate * (1 + gstRate/100)
 }
 
+interface Client {
+  _id: string;
+  name: string;
+  address?: string;
+  gstin?: string;
+  contact?: string;
+}
+
 export function CreateInvoiceScreen() {
-  // State for form fields - Add state for all relevant fields
-  const [customerName, setCustomerName] = useState('Ananya Sharma');
-  const [address, setAddress] = useState('123, Maple Street, Bengaluru, Karnataka, 560001');
-  const [gstin, setGstin] = useState('29ABCDE1234F1Z5');
-  const [contactNo, setContactNo] = useState('+91 98765 43210');
-  const [invoiceNumber, setInvoiceNumber] = useState('INV-2024-00123');
-  const [invoiceDate, setInvoiceDate] = useState<Date | null>(new Date('2024-07-26'));
-  const [dueDate, setDueDate] = useState<Date | null>(new Date('2024-08-10'));
-  const [notes, setNotes] = useState('Payment is due within 15 days. Thank you for your business!');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
+  
+  // State for form fields
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [customerName, setCustomerName] = useState('');
+  const [address, setAddress] = useState('');
+  const [gstin, setGstin] = useState('');
+  const [contactNo, setContactNo] = useState('');
+  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [invoiceDate, setInvoiceDate] = useState<Date | null>(new Date());
+  const [dueDate, setDueDate] = useState<Date | null>(new Date(Date.now() + 15 * 24 * 60 * 60 * 1000)); // 15 days from now
+  const [notes, setNotes] = useState('');
+  const [status, setStatus] = useState<'DRAFT' | 'PENDING'>('DRAFT');
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [showError, setShowError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   // State for invoice items
   const [items, setItems] = useState<InvoiceItem[]>([
-    { id: 1, description: 'Web Design Services', hsnSac: '998314', quantity: 1, rate: 50000, gstRate: 18, amount: 59000.00 },
-    { id: 2, description: 'Domain & Hosting', hsnSac: '998315', quantity: 1, rate: 8000, gstRate: 18, amount: 9440.00 },
+    { id: 1, description: '', hsnSac: '', quantity: 1, rate: 0, gstRate: 18, amount: 0 },
   ]);
+
+  // Fetch clients for dropdown
+  const { data: clientsData, isLoading: isLoadingClients } = useQuery({
+    queryKey: ['clients'],
+    queryFn: async () => {
+      const { data } = await api.get('/clients');
+      return data;
+    },
+  });
+
+  // Create invoice mutation
+  const createInvoiceMutation = useMutation({
+    mutationFn: async (invoiceData: any) => {
+      const { data } = await api.post('/invoices', invoiceData);
+      return data;
+    },
+    onSuccess: () => {
+      setShowSuccess(true);
+      setTimeout(() => {
+        navigate('/invoices');
+      }, 2000);
+    },
+    onError: (error: any) => {
+      setErrorMessage(error.response?.data?.message || 'Failed to create invoice');
+      setShowError(true);
+    },
+  });
 
   // --- Calculation Logic --- (Implement based on your needs)
   const calculateSubtotal = () => items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
@@ -118,6 +167,85 @@ export function CreateInvoiceScreen() {
   const handleRemoveItem = (index: number) => {
     setItems(items.filter((_, i) => i !== index));
   };
+
+  // Handle client selection
+  const handleClientChange = (clientId: string) => {
+    setSelectedClientId(clientId);
+    const selectedClient = clientsData?.clients?.find((client: Client) => client._id === clientId);
+    if (selectedClient) {
+      setCustomerName(selectedClient.name);
+      setAddress(selectedClient.address || '');
+      setGstin(selectedClient.gstin || '');
+      setContactNo(selectedClient.contact || '');
+    }
+  };
+
+  // Handle form submission
+  const handleSubmit = async (isDraft: boolean = false) => {
+    if (!selectedClientId) {
+      setErrorMessage('Please select a client');
+      setShowError(true);
+      return;
+    }
+
+    if (items.length === 0 || items.some(item => !item.description || item.quantity <= 0 || item.rate <= 0)) {
+      setErrorMessage('Please add at least one valid item');
+      setShowError(true);
+      return;
+    }
+
+    const invoiceData = {
+      invoiceNumber,
+      invoiceDate: invoiceDate?.toISOString(),
+      dueDate: dueDate?.toISOString(),
+      status: isDraft ? 'DRAFT' : 'PENDING',
+      notes,
+      subtotal: calculateSubtotal(),
+      cgstAmount: calculateGst().cgst,
+      sgstAmount: calculateGst().sgst,
+      igstAmount: calculateGst().igst,
+      total: calculateTotal(),
+      clientId: selectedClientId,
+      items: items.map(item => ({
+        description: item.description,
+        hsnSac: item.hsnSac,
+        quantity: item.quantity,
+        rate: item.rate,
+        gstRate: item.gstRate,
+        amount: item.amount,
+      })),
+    };
+
+    createInvoiceMutation.mutate(invoiceData);
+  };
+
+  // Handle pre-selected client from navigation state
+  useEffect(() => {
+    const selectedClient = location.state?.selectedClient;
+    if (selectedClient) {
+      setSelectedClientId(selectedClient._id);
+      setCustomerName(selectedClient.name);
+      setAddress(selectedClient.address || '');
+      setGstin(selectedClient.gstin || '');
+      setContactNo(selectedClient.contact || '');
+    }
+  }, [location.state]);
+
+  // Generate invoice number
+  useEffect(() => {
+    const generateInvoiceNumber = () => {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+      return `INV-${year}${month}${day}-${random}`;
+    };
+    
+    if (!invoiceNumber) {
+      setInvoiceNumber(generateInvoiceNumber());
+    }
+  }, [invoiceNumber]);
  // --- End Handlers ---
 
 
@@ -197,28 +325,57 @@ export function CreateInvoiceScreen() {
               Create New Invoice
             </Typography>
             <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button variant="outlined">Save as Draft</Button>
-              <Button variant="contained">Generate PDF</Button>
-              <Button variant="contained" startIcon={<EmailIcon />}>Send</Button>
+              <Button 
+                variant="outlined"
+                onClick={() => handleSubmit(true)}
+                disabled={createInvoiceMutation.isPending}
+              >
+                {createInvoiceMutation.isPending ? <CircularProgress size={20} /> : 'Save as Draft'}
+              </Button>
+              <Button 
+                variant="contained"
+                onClick={() => handleSubmit(false)}
+                disabled={createInvoiceMutation.isPending}
+              >
+                {createInvoiceMutation.isPending ? <CircularProgress size={20} /> : 'Create Invoice'}
+              </Button>
             </Box>
           </Box>
 
           <Grid container spacing={3}>
             {/* Customer Info Card */}
-            <Grid >
+            <Grid item xs={12}>
               <Paper elevation={1} sx={{ p: 3, borderRadius: 2 }}>
                 <Typography variant="h6" component="h2" fontWeight="bold" sx={{ mb: 2 }}>Customer Information</Typography>
                 <Grid container spacing={2}>
-                   <Grid >
+                   <Grid item xs={12}>
+                        <Select
+                          value={selectedClientId}
+                          onChange={(e) => handleClientChange(e.target.value)}
+                          displayEmpty
+                          fullWidth
+                          disabled={isLoadingClients}
+                        >
+                          <MenuItem value="">
+                            <em>Select a client</em>
+                          </MenuItem>
+                          {clientsData?.clients?.map((client: Client) => (
+                            <MenuItem key={client._id} value={client._id}>
+                              {client.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                   </Grid>
+                   <Grid item xs={12}>
                         <TextField
                             label="Customer Name"
                             fullWidth
                             value={customerName}
                             onChange={(e) => setCustomerName(e.target.value)}
-                            placeholder="Search or add new customer"
+                            placeholder="Customer name"
                         />
                    </Grid>
-                   <Grid >
+                   <Grid item xs={12}>
                         <TextField
                             label="Address"
                             fullWidth
@@ -229,7 +386,7 @@ export function CreateInvoiceScreen() {
                             placeholder="Enter customer's address"
                         />
                    </Grid>
-                   <Grid>
+                   <Grid item xs={12} sm={6}>
                          <TextField
                             label="GSTIN"
                             fullWidth
@@ -237,7 +394,7 @@ export function CreateInvoiceScreen() {
                             onChange={(e) => setGstin(e.target.value)}
                         />
                    </Grid>
-                   <Grid>
+                   <Grid item xs={12} sm={6}>
                          <TextField
                             label="Contact No."
                             fullWidth
@@ -250,11 +407,11 @@ export function CreateInvoiceScreen() {
             </Grid>
 
             {/* Invoice Details Card */}
-            <Grid >
+            <Grid item xs={12}>
                <Paper elevation={1} sx={{ p: 3, borderRadius: 2 }}>
                   <Typography variant="h6" component="h2" fontWeight="bold" sx={{ mb: 2 }}>Invoice Details</Typography>
                    <Grid container spacing={2}>
-                      <Grid >
+                      <Grid item xs={12} sm={4}>
                           <TextField
                               label="Invoice Number"
                               fullWidth
@@ -262,7 +419,7 @@ export function CreateInvoiceScreen() {
                               onChange={(e) => setInvoiceNumber(e.target.value)}
                           />
                       </Grid>
-                      <Grid>
+                      <Grid item xs={12} sm={4}>
                           <DatePicker
                               label="Invoice Date"
                               value={invoiceDate}
@@ -270,7 +427,7 @@ export function CreateInvoiceScreen() {
                               slotProps={{ textField: { fullWidth: true } }} // Make input full width
                           />
                       </Grid>
-                      <Grid>
+                      <Grid item xs={12} sm={4}>
                           <DatePicker
                               label="Due Date"
                               value={dueDate}
@@ -284,7 +441,7 @@ export function CreateInvoiceScreen() {
             </Grid>
 
             {/* Items Table Card */}
-            <Grid >
+            <Grid item xs={12}>
                 <Paper elevation={1} sx={{ p: 3, borderRadius: 2 }}>
                    <Typography variant="h6" component="h2" fontWeight="bold" sx={{ mb: 2 }}>Items</Typography>
                    <TableContainer>
@@ -381,7 +538,7 @@ export function CreateInvoiceScreen() {
             </Grid>
 
             {/* Notes & Summary */}
-            <Grid > {/* Adjusted grid size */}
+            <Grid item xs={12} md={6}> {/* Adjusted grid size */}
                  <Paper elevation={1} sx={{ p: 3, borderRadius: 2, height: '100%' }}>
                     <Typography variant="h6" component="h2" fontWeight="bold" sx={{ mb: 2 }}>Notes</Typography>
                      <TextField
@@ -394,7 +551,7 @@ export function CreateInvoiceScreen() {
                     />
                  </Paper>
             </Grid>
-             <Grid > {/* Adjusted grid size */}
+             <Grid item xs={12} md={6}> {/* Adjusted grid size */}
                   <Paper elevation={1} sx={{ p: 3, borderRadius: 2, height: '100%' }}>
                      <Typography variant="h6" component="h2" fontWeight="bold" sx={{ mb: 2 }}>Summary</Typography>
                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -422,6 +579,29 @@ export function CreateInvoiceScreen() {
           </Grid>
         </Box>
       </Box>
+
+      {/* Success and Error Notifications */}
+      <Snackbar
+        open={showSuccess}
+        autoHideDuration={3000}
+        onClose={() => setShowSuccess(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setShowSuccess(false)} severity="success" sx={{ width: '100%' }}>
+          Invoice created successfully! Redirecting to invoices...
+        </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={showError}
+        autoHideDuration={5000}
+        onClose={() => setShowError(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setShowError(false)} severity="error" sx={{ width: '100%' }}>
+          {errorMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

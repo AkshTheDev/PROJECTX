@@ -1,7 +1,7 @@
 // client/src/components/app/ProfileScreen.tsx
 import React, { useState, useEffect } from 'react';
-import api from '@/lib/api'; // Assuming you'll fetch/save profile data later
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'; // Import useQueryClient
+import api from '@/lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 // MUI Imports
 import Box from '@mui/material/Box';
@@ -21,10 +21,10 @@ import Tab from '@mui/material/Tab';
 import Grid from '@mui/material/Grid';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
-import IconButton from '@mui/material/IconButton'; // Import IconButton
-import InputAdornment from '@mui/material/InputAdornment'; // Import InputAdornment
-import Divider from '@mui/material/Divider'; // Import Divider
-import Skeleton from '@mui/material/Skeleton'; // Import Skeleton
+import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
+import Divider from '@mui/material/Divider';
+import Skeleton from '@mui/material/Skeleton';
 
 // Icon Imports
 import PersonIcon from '@mui/icons-material/Person';
@@ -37,9 +37,9 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 interface UserProfile {
   id?: string;
   fullName: string;
-  email: string;
+  email: string; // Usually read-only
   phone: string;
-  avatarUrl?: string;
+  avatarUrl?: string; // URL for the avatar image
   notificationsOn: boolean;
 }
 
@@ -50,22 +50,28 @@ interface BusinessProfile {
   gstin: string;
 }
 
-// Example API functions
+// API functions (Replace mocks with actual API calls)
 const fetchUserProfile = async (): Promise<UserProfile> => {
-  // const { data } = await api.get('/profile/user');
-  await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate loading
+  // const { data } = await api.get('/profile'); // Example: Combined endpoint
+  // // Process data if API returns combined user & business info
+  // return data.user;
+  // Mock Data:
+  await new Promise(resolve => setTimeout(resolve, 1000));
   return {
       fullName: 'Rakesh Sharma',
       email: 'rakesh.sharma@example.com',
       phone: '+91 98765 43210',
-      avatarUrl: 'https://via.placeholder.com/96',
+      avatarUrl: 'https://via.placeholder.com/96', // Placeholder image
       notificationsOn: true,
   };
 };
 
 const fetchBusinessProfile = async (): Promise<BusinessProfile> => {
-  // const { data } = await api.get('/profile/business');
-   await new Promise(resolve => setTimeout(resolve, 1200)); // Simulate loading
+  // const { data } = await api.get('/profile'); // Example: Combined endpoint
+  // // Process data if API returns combined user & business info
+  // return data.business;
+   // Mock Data:
+   await new Promise(resolve => setTimeout(resolve, 1200));
   return {
       name: 'Sharma Enterprises',
       address: '123, Business Avenue, Commerce City, Mumbai, 400001',
@@ -75,11 +81,13 @@ const fetchBusinessProfile = async (): Promise<BusinessProfile> => {
 
 // Define Update Functions
 const updateUserProfileAPI = async (profileData: Partial<UserProfile>): Promise<UserProfile> => {
-    const { data } = await api.put('/profile/user', profileData);
+    // Assuming API updates based on currently logged-in user
+    const { data } = await api.put('/profile/user', profileData); // Send only updated fields
     return data;
 }
 const updateBusinessProfileAPI = async (profileData: Partial<BusinessProfile>): Promise<BusinessProfile> => {
-    const { data } = await api.put('/profile/business', profileData);
+    // Assuming API updates based on currently logged-in user
+    const { data } = await api.put('/profile/business', profileData); // Send only updated fields
     return data;
 }
 
@@ -87,12 +95,12 @@ export function ProfileScreen() {
   const [activeSection, setActiveSection] = useState('personal');
   const queryClient = useQueryClient();
 
-  // State for form fields
+  // State for form fields - Initialized empty
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
-  const [notificationsOn, setNotificationsOn] = useState(true);
+  const [notificationsOn, setNotificationsOn] = useState(false); // Default to false until fetched
   const [businessName, setBusinessName] = useState('');
   const [businessAddress, setBusinessAddress] = useState('');
   const [gstin, setGstin] = useState('');
@@ -102,9 +110,8 @@ export function ProfileScreen() {
   const { data: userProfile, isLoading: isLoadingUser, isError: isErrorUser } = useQuery({
     queryKey: ['userProfile'],
     queryFn: fetchUserProfile,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, // Cache data for 5 minutes
     refetchOnWindowFocus: false,
-    // onSuccess removed
   });
 
   // Fetch Business Profile Data
@@ -113,7 +120,6 @@ export function ProfileScreen() {
     queryFn: fetchBusinessProfile,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
-    // onSuccess removed
   });
 
   // Use useEffect to update state when data loads
@@ -125,7 +131,7 @@ export function ProfileScreen() {
       setAvatarUrl(userProfile.avatarUrl || '');
       setNotificationsOn(userProfile.notificationsOn);
     }
-  }, [userProfile]);
+  }, [userProfile]); // Re-run if userProfile data changes
 
   useEffect(() => {
     if (businessProfile) {
@@ -133,7 +139,7 @@ export function ProfileScreen() {
       setBusinessAddress(businessProfile.address || '');
       setGstin(businessProfile.gstin || '');
     }
-  }, [businessProfile]);
+  }, [businessProfile]); // Re-run if businessProfile data changes
 
   // Mutation for saving changes
   const mutation = useMutation({
@@ -141,15 +147,18 @@ export function ProfileScreen() {
         setSaveStatus('idle');
         const userUpdateData: Partial<UserProfile> = { fullName, phone, notificationsOn };
         const businessUpdateData: Partial<BusinessProfile> = { name: businessName, address: businessAddress, gstin };
-        const userUpdatePromise = updateUserProfileAPI(userUpdateData);
-        const businessUpdatePromise = updateBusinessProfileAPI(businessUpdateData);
-        await Promise.all([userUpdatePromise, businessUpdatePromise]);
+        // Use Promise.allSettled to handle potential individual failures if needed
+        await Promise.all([
+            updateUserProfileAPI(userUpdateData),
+            updateBusinessProfileAPI(businessUpdateData)
+        ]);
     },
     onSuccess: () => {
+      // Invalidate queries to refetch fresh data after save
       queryClient.invalidateQueries({ queryKey: ['userProfile'] });
       queryClient.invalidateQueries({ queryKey: ['businessProfile'] });
-       setSaveStatus('success');
-       setTimeout(() => setSaveStatus('idle'), 3000);
+      setSaveStatus('success');
+      setTimeout(() => setSaveStatus('idle'), 3000); // Reset status after 3 seconds
     },
     onError: (error) => {
       console.error("Profile update failed:", error);
@@ -166,22 +175,26 @@ export function ProfileScreen() {
   };
 
   const handleSaveChanges = () => {
-      mutation.mutate();
+      mutation.mutate(); // Trigger the mutation function
   }
 
+  // Combined loading/error states
   const isLoading = isLoadingUser || isLoadingBusiness;
   const isError = isErrorUser || isErrorBusiness;
 
+  // Sidebar navigation items configuration
   const navItems = [
     { id: 'personal', text: 'Personal Information', icon: <PersonIcon /> },
     { id: 'business', text: 'Business Information', icon: <BusinessCenterIcon /> },
     { id: 'security', text: 'Security', icon: <LockIcon /> },
   ];
 
+  // Display error message if fetching fails
   if (isError) {
-      return <Alert severity="error">Failed to load profile data.</Alert>;
+      return <Alert severity="error" sx={{ m: 3 }}>Failed to load profile data. Please try again later.</Alert>;
   }
 
+  // --- JSX Structure ---
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2, sm: 3, lg: 4 }, bgcolor: 'grey.100' }}>
       <Grid container spacing={4} sx={{ maxWidth: '1200px', mx: 'auto' }}>
@@ -224,7 +237,7 @@ export function ProfileScreen() {
                 </Tabs>
             </Box>
 
-            {/* Sections */}
+            {/* --- Sections --- */}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
 
               {/* --- Personal Information --- */}
@@ -234,7 +247,7 @@ export function ProfileScreen() {
                         {isLoading ? (
                             <Skeleton variant="circular" width={96} height={96} />
                         ) : (
-                            <Avatar src={avatarUrl} sx={{ width: 96, height: 96 }}>RS</Avatar>
+                            <Avatar src={avatarUrl} sx={{ width: 96, height: 96 }}>RS</Avatar> // Fallback initials
                         )}
                         <Box>
                             <Typography variant="h5" component="div" fontWeight="bold">
@@ -257,7 +270,7 @@ export function ProfileScreen() {
                             fullWidth
                             value={fullName}
                             onChange={(e) => setFullName(e.target.value)}
-                            disabled={isLoading}
+                            disabled={isLoading || mutation.isPending} // Disable while loading or saving
                         />
                     </Grid>
                     <Grid >
@@ -265,9 +278,9 @@ export function ProfileScreen() {
                             label="Email Address"
                             fullWidth
                             value={email}
-                            disabled
+                            disabled // Email usually not editable
                             InputProps={{ readOnly: true }}
-                            sx={{ bgcolor: 'action.disabledBackground' }}
+                            sx={{ bgcolor: 'action.disabledBackground' }} // Visual cue for read-only
                         />
                     </Grid>
                      <Grid >
@@ -276,7 +289,7 @@ export function ProfileScreen() {
                             fullWidth
                             value={phone}
                             onChange={(e) => setPhone(e.target.value)}
-                            disabled={isLoading}
+                            disabled={isLoading || mutation.isPending}
                         />
                     </Grid>
                  </Grid>
@@ -292,7 +305,7 @@ export function ProfileScreen() {
                             fullWidth
                             value={businessName}
                             onChange={(e) => setBusinessName(e.target.value)}
-                            disabled={isLoading}
+                            disabled={isLoading || mutation.isPending}
                         />
                     </Grid>
                      <Grid >
@@ -303,7 +316,7 @@ export function ProfileScreen() {
                             rows={3}
                             value={businessAddress}
                             onChange={(e) => setBusinessAddress(e.target.value)}
-                            disabled={isLoading}
+                            disabled={isLoading || mutation.isPending}
                         />
                     </Grid>
                      <Grid >
@@ -312,12 +325,12 @@ export function ProfileScreen() {
                             fullWidth
                             value={gstin}
                             onChange={(e) => setGstin(e.target.value)}
-                            disabled={isLoading}
+                            disabled={isLoading || mutation.isPending}
                             InputProps={{
                                 endAdornment: (
                                     <InputAdornment position="end">
                                         <Tooltip title="The Goods and Services Tax Identification Number (GSTIN) is a 15-digit PAN-based unique identification number.">
-                                            <IconButton edge="end" size="small">
+                                            <IconButton edge="end" size="small" tabIndex={-1}> {/* Prevent tabbing to icon */}
                                                 <InfoIcon fontSize="small" color="action"/>
                                             </IconButton>
                                         </Tooltip>
@@ -336,9 +349,10 @@ export function ProfileScreen() {
                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Box>
                                 <Typography fontWeight="medium">Password</Typography>
-                                <Typography variant="body2" color="text.secondary">Last changed on 12 Jan 2024</Typography>
+                                <Typography variant="body2" color="text.secondary">Last changed on 12 Jan 2024</Typography> {/* Replace with dynamic data */}
                             </Box>
-                           <Button variant="text" size="small">Change Password</Button>
+                           {/* Add onClick handler for changing password */}
+                           <Button variant="text" size="small" /* onClick={openChangePasswordModal} */>Change Password</Button>
                        </Box>
                         <Divider />
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -349,7 +363,7 @@ export function ProfileScreen() {
                            <Switch
                                 checked={notificationsOn}
                                 onChange={(e) => setNotificationsOn(e.target.checked)}
-                                disabled={isLoading}
+                                disabled={isLoading || mutation.isPending}
                                 inputProps={{ 'aria-label': 'Enable email notifications' }}
                             />
                        </Box>
@@ -358,13 +372,15 @@ export function ProfileScreen() {
 
                 {/* --- Action Buttons & Status --- */}
                <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 2, mt: 2 }}>
+                  {/* Status Alerts moved to the left */}
                   {saveStatus === 'success' && <Alert severity="success" sx={{ py: 0.5, mr: 'auto' }}>Changes saved!</Alert>}
                   {saveStatus === 'error' && <Alert severity="error" sx={{ py: 0.5, mr: 'auto' }}>Failed to save changes.</Alert>}
+
                   <Button variant="outlined" disabled={mutation.isPending}>Cancel</Button>
                   <Button
                     variant="contained"
                     onClick={handleSaveChanges}
-                    disabled={mutation.isPending || isLoading}
+                    disabled={mutation.isPending || isLoading} // Disable button while loading or saving
                   >
                      {mutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Save Changes'}
                   </Button>

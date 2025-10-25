@@ -6,6 +6,7 @@ import SignUpPage from './pages/SignUpPage';
 import DashboardPage from './pages/DashboardPage';
 import InvoiceHistoryPage from './pages/InvoiceHistoryPage';
 import CreateInvoicePage from './pages/CreateInvoicePage';
+import ClientPage from './pages/ClientPage';
 import GstReportsPage from './pages/GstReportsPage';
 import ProfilePage from './pages/ProfilePage';
 import { ProtectedRoute } from './components/auth/ProtectedRoute'; // <-- Import
@@ -22,6 +23,7 @@ function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/invoices" element={<InvoiceHistoryPage />} />
           <Route path="/invoices/new" element={<CreateInvoicePage />} />
+          <Route path="/clients" element={<ClientPage />} />
           <Route path="/reports/gst" element={<GstReportsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>
