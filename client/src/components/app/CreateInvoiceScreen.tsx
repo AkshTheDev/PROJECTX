@@ -42,13 +42,13 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import PeopleIcon from '@mui/icons-material/People';
 import Inventory2Icon from '@mui/icons-material/Inventory2'; // Replaces Package
-import AssessmentIcon from '@mui/icons-material/Assessment'; // Replaces BarChart
+// import AssessmentIcon from '@mui/icons-material/Assessment'; // Replaces BarChart (removed Reports)
 import SettingsIcon from '@mui/icons-material/Settings';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline'; // Replaces HelpCircle
 // import EmailIcon from '@mui/icons-material/Email'; // Replaces Mail
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'; // Replaces PlusCircle
 import DeleteIcon from '@mui/icons-material/Delete'; // For removing items
-import Avatar from '@mui/material/Avatar'; // <-- ADD THIS LINE
+// import Avatar from '@mui/material/Avatar'; // No longer used in sidebar header
 const drawerWidth = 256;
 
 // Example type for Invoice Item - adjust as needed
@@ -255,27 +255,29 @@ export function CreateInvoiceScreen() {
      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', p: 2, pt: 0 }}>
        {/* Logo/Title */}
        <Toolbar sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, px: 0 }}>
-         <Avatar
-           alt="Modern Invoicer Logo"
-           src="https://storage.googleapis.com/stitch-assets/static/assets/images/stitch_login_signup/invoice_creation/logo.png"
-           sx={{ width: 40, height: 40 }}
-         />
+         <ReceiptLongIcon color="primary" sx={{ fontSize: 40 }} />
          <Box>
-            <Typography variant="subtitle1" fontWeight="medium">Modern Invoicer</Typography>
-            <Typography variant="caption" color="text.secondary">GST Invoicing</Typography>
+            <Typography variant="subtitle1" fontWeight="bold">GST Invoice</Typography>
          </Box>
        </Toolbar>
        {/* Nav Items */}
        <List sx={{ flexGrow: 1 }}>
-         {['Dashboard', 'Invoices', 'Customers', 'Products', 'Reports'].map((text, index) => (
+         {['Dashboard', 'Invoices', 'Add Client', 'Products'].map((text, index) => (
            <ListItem key={text} disablePadding sx={{ mb: 0.5 }}>
-             <ListItemButton selected={text === 'Invoices'} sx={{ borderRadius: 1 }}>
+             <ListItemButton
+               selected={text === 'Invoices'}
+               sx={{ borderRadius: 1 }}
+               onClick={() => {
+                 if (text === 'Dashboard') navigate('/dashboard');
+                 if (text === 'Invoices') navigate('/invoices');
+                 if (text === 'Add Client') navigate('/clients');
+               }}
+             >
                <ListItemIcon sx={{ minWidth: 36, color: text === 'Invoices' ? 'primary.main' : 'inherit' }}>
                  {index === 0 && <DashboardIcon />}
                  {index === 1 && <ReceiptLongIcon />}
                  {index === 2 && <PeopleIcon />}
                  {index === 3 && <Inventory2Icon />}
-                 {index === 4 && <AssessmentIcon />}
                </ListItemIcon>
                <ListItemText primary={text} />
              </ListItemButton>
@@ -284,7 +286,6 @@ export function CreateInvoiceScreen() {
        </List>
        {/* Bottom Actions */}
        <Box sx={{ mt: 'auto' }}>
-            <Button variant="contained" fullWidth sx={{ mb: 2 }}>New Invoice</Button>
             <List dense>
                  {['Settings', 'Help'].map((text, index) => (
                    <ListItem key={text} disablePadding>

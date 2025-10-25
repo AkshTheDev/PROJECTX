@@ -219,7 +219,6 @@ export function ClientScreen() {
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
     { text: 'Invoices', icon: <ReceiptLongIcon />, path: '/invoices' },
     { text: 'Clients', icon: <PeopleIcon />, active: true, path: '/clients' },
-    { text: 'Reports', icon: <BarChartIcon />, path: '/reports/gst' },
   ];
 
   const drawerBottomItems = [
@@ -341,9 +340,7 @@ export function ClientScreen() {
             {/* Right Side Icons/Avatar */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <IconButton color="inherit">
-                <Badge badgeContent={4} color="error">
-                  <NotificationsIcon />
-                </Badge>
+                
               </IconButton>
               <Avatar
                 alt={user?.fullName || user?.email || 'User'}

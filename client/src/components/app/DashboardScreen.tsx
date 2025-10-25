@@ -64,11 +64,9 @@ import { styled, alpha } from '@mui/material/styles';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'; // Using this instead of all_inbox
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleIcon from '@mui/icons-material/People';
-import BarChartIcon from '@mui/icons-material/BarChart';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SearchIcon from '@mui/icons-material/Search';
-import NotificationsIcon from '@mui/icons-material/Notifications';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
@@ -220,7 +218,6 @@ export function DashboardScreen() {
     { text: 'Dashboard', icon: <DashboardIcon />, active: true, path: '/dashboard' },
     { text: 'Invoices', icon: <ReceiptLongIcon />, path: '/invoices' },
     { text: 'Clients', icon: <PeopleIcon />, path: '/clients' },
-    { text: 'Reports', icon: <BarChartIcon />, path: '/reports/gst' },
   ];
 
   const drawerBottomItems = [
@@ -345,9 +342,7 @@ export function DashboardScreen() {
             {/* Right Side Icons/Avatar */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <IconButton color="inherit">
-                <Badge badgeContent={4} color="error"> {/* Example badge */}
-                  <NotificationsIcon />
-                </Badge>
+                
               </IconButton>
               <Avatar
                 alt={user?.fullName || user?.email || 'User'}

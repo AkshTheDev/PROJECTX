@@ -171,7 +171,7 @@ export function GstReportsScreen() {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
              {/* Simple Logo Placeholder */}
             <Typography variant="h6" noWrap component="div" fontWeight="bold" color="primary">
-              GST Pro
+              GST Invoice
             </Typography>
             {/* Navigation Links (Desktop) */}
             <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 3 }}>
