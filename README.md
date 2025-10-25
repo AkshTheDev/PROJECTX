@@ -65,6 +65,26 @@ npm run dev
 
 Client will start on http://localhost:5173 by default. The API runs at http://localhost:5000.
 
+## Deploy with Docker Compose
+
+Prerequisites: Docker Desktop (Windows/macOS) or Docker Engine (Linux).
+
+1. Copy `.env.example` to `.env` at the project root and fill in values (MongoDB, JWT, Cloudinary).
+2. Build and start both services:
+
+```
+docker compose up -d --build
+```
+
+This runs:
+- Server on http://localhost:5000
+- Client on http://localhost:8080 (Nginx serves the React app and proxies `/api` to the server)
+
+Notes:
+- The client uses `/api` by default, which works with the provided Nginx proxy. To point directly to a remote API instead, set `VITE_API_BASE` at build time.
+- To view logs: `docker compose logs -f`
+- To stop: `docker compose down`
+
 ## Scripts
 
 - Client
@@ -86,6 +106,7 @@ Client will start on http://localhost:5173 by default. The API runs at http://lo
 
 - API base URL is configured in `client/src/lib/api.ts`. Change it if your server isn’t on localhost:5000.
 - CORS: set `CLIENT_URL` in server `.env` if you restrict origins.
+ - For Docker Compose, CORS `CLIENT_URL` defaults to `http://localhost:8080`.
 
 ## Troubleshooting
 
