@@ -1,0 +1,17 @@
+services:
+  # API on Render (Node runtime)
+  - type: web
+    name: gst-invoice-api
+    runtime: node
+    plan: free
+    rootDir: gst-invoice-app-mongo/server
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    autoDeploy: true
+    envVars:
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLIENT_URL
+        value: # Set to your Vercel URL after client deploy
