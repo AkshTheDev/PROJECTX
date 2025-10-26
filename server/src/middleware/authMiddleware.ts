@@ -5,6 +5,7 @@ import Business from '../models/Business'; // Import Business model
 import mongoose from 'mongoose';
 // Extend Express Request type to include user and businessId
 export interface AuthRequest extends Request {
+  user?: { id: string };
   userId?: string;
   businessId?: string;
 }
@@ -25,6 +26,7 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
 
       // Attach user ID to request
       req.userId = decoded.userId;
+      req.user = { id: decoded.userId };
 
       // --- Find the associated Business ID ---
       const business = await Business.findOne({ user: req.userId }).select('_id');

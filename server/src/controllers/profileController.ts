@@ -3,6 +3,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/authMiddleware'; // Use AuthRequest type
 import User from '../models/User';
 import Business from '../models/Business';
+import bcrypt from 'bcryptjs';
 
 // --- Get User & Business Profile ---
 export const getProfile = async (req: AuthRequest, res: Response) => {
@@ -38,8 +39,45 @@ export const updateUserProfile = async (req: AuthRequest, res: Response) => {
         res.json(user);
 
     } catch (error) {
-        console.error("Update User Profile Error:", error);
-        res.status(500).json({ message: 'Server error updating user profile' });
+        console.error("Update Business Profile Error:", error);
+        res.status(500).json({ message: 'Server error updating business profile' });
+    }
+};
+
+// --- Change Password ---
+export const changePassword = async (req: AuthRequest, res: Response) => {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: 'Current password and new password are required' });
+    }
+
+    if (newPassword.length < 6) {
+        return res.status(400).json({ message: 'New password must be at least 6 characters' });
+    }
+
+    try {
+        const user = await User.findById(req.userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Verify current password
+        const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+        if (!isMatch) {
+            return res.status(400).json({ message: 'Current password is incorrect' });
+        }
+
+        // Hash new password
+        const newPasswordHash = await bcrypt.hash(newPassword, 10);
+        user.passwordHash = newPasswordHash;
+        await user.save();
+
+        res.json({ message: 'Password changed successfully' });
+
+    } catch (error) {
+        console.error("Change Password Error:", error);
+        res.status(500).json({ message: 'Server error changing password' });
     }
 };
 

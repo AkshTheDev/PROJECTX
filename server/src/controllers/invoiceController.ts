@@ -3,6 +3,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/authMiddleware';
 import Invoice from '../models/Invoice';
 import Client from '../models/Client'; // Needed if creating clients on the fly
+import Business from '../models/Business';
 import mongoose from 'mongoose';
 // --- Create New Invoice ---
 export const createInvoice = async (req: AuthRequest, res: Response) => {
@@ -302,5 +303,47 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
     } catch (error) {
         console.error("Get Dashboard Stats Error:", error);
         res.status(500).json({ message: 'Server error fetching dashboard stats' });
+    }
+};
+
+// Check and update overdue invoices
+export const updateOverdueInvoices = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            res.status(401).json({ message: 'Unauthorized' });
+            return;
+        }
+
+        // Get user's business
+        const business = await Business.findOne({ user: userId });
+        if (!business) {
+            res.status(404).json({ message: 'Business not found' });
+            return;
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Update invoices that are past due date and not already paid or overdue
+        const result = await Invoice.updateMany(
+            {
+                business: business._id,
+                dueDate: { $lt: today },
+                status: { $in: ['PENDING', 'UNPAID'] }
+            },
+            {
+                $set: { status: 'OVERDUE' }
+            }
+        );
+
+        res.status(200).json({ 
+            message: 'Overdue invoices updated',
+            updated: result.modifiedCount 
+        });
+
+    } catch (error) {
+        console.error("Update Overdue Invoices Error:", error);
+        res.status(500).json({ message: 'Server error updating overdue invoices' });
     }
 };
