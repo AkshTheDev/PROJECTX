@@ -65,25 +65,66 @@ npm run dev
 
 Client will start on http://localhost:5173 by default. The API runs at http://localhost:5000.
 
-## Deploy with Docker Compose
+## Deploy to Vercel + Render (get a public link)
 
-Prerequisites: Docker Desktop (Windows/macOS) or Docker Engine (Linux).
+1) Deploy API to Render
+- Go to https://dashboard.render.com → New → Web Service
+- Connect your GitHub repo: AkshTheDev/PROJECTX
+- Settings:
+  - Name: gst-invoice-api
+  - Runtime: Node
+  - Branch: master
+  - Root Directory: gst-invoice-app-mongo/server
+  - Build Command: npm ci && npm run build
+  - Start Command: npm run start
+- Environment Variables:
+  - MONGO_URI = your MongoDB connection string
+  - JWT_SECRET = strong random string (Render can generate)
+  - CLIENT_URL = (set after Vercel deploy)
+- Deploy and copy your API URL: https://YOUR-API.onrender.com
 
-1. Copy `.env.example` to `.env` at the project root and fill in values (MongoDB, JWT, Cloudinary).
-2. Build and start both services:
+2) Deploy Client to Vercel
+- Go to https://vercel.com/new → Import your repo: AkshTheDev/PROJECTX
+- Settings:
+  - Root Directory: gst-invoice-app-mongo/client
+  - Framework Preset: Vite
+  - Build Command: npm ci && npm run build
+  - Output Directory: dist
+- Environment Variables:
+  - VITE_API_BASE = https://YOUR-API.onrender.com/api
+- Deploy and get your public URL: https://YOUR-SITE.vercel.app
 
-```
-docker compose up -d --build
-```
+3) Update Render API
+- Go back to Render dashboard → your API service → Environment
+- Set CLIENT_URL = https://YOUR-SITE.vercel.app
+- Save (triggers redeploy)
 
-This runs:
-- Server on http://localhost:5000
-- Client on http://localhost:8080 (Nginx serves the React app and proxies `/api` to the server)
+Your deployment link is the Vercel URL. Share that to access your app publicly.
 
-Notes:
-- The client uses `/api` by default, which works with the provided Nginx proxy. To point directly to a remote API instead, set `VITE_API_BASE` at build time.
-- To view logs: `docker compose logs -f`
-- To stop: `docker compose down`
+## One-click cloud deploy (public link fast)
+
+If Docker is blocked on your network, deploy to free hosts:
+
+1) Deploy API to Render (free)
+
+- Click: https://render.com/deploy?repo=https://github.com/AkshTheDev/PROJECTX
+- Render will detect `render.yaml` and set up a Node Web Service from `gst-invoice-app-mongo/server`.
+- Set env vars on Render:
+  - MONGO_URI (your MongoDB connection string)
+  - JWT_SECRET (auto-generated is fine)
+  - CLIENT_URL: set to your client URL (after step 2)
+- When deployed, you’ll get an API URL like: `https://<your-api>.onrender.com` (API base is `.../api`).
+
+2) Deploy Client to Netlify (free)
+
+- Dashboard → "New site from Git" → Choose this repo → Set base directory to `gst-invoice-app-mongo/client`
+- Build command: `npm ci && npm run build`
+- Publish directory: `dist`
+- Add environment variable:
+  - VITE_API_BASE = `https://<your-api>.onrender.com/api`
+- Deploy and you’ll get a public site URL like: `https://<your-site>.netlify.app`
+
+Share the Netlify URL as your deployment link. The client proxies to the API via VITE_API_BASE.
 
 ## Scripts
 
