@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate, useLocation } from 'react-router-dom';
-// import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
 
 // MUI Imports
@@ -44,7 +44,8 @@ import PeopleIcon from '@mui/icons-material/People';
 import Inventory2Icon from '@mui/icons-material/Inventory2'; // Replaces Package
 // import AssessmentIcon from '@mui/icons-material/Assessment'; // Replaces BarChart (removed Reports)
 import SettingsIcon from '@mui/icons-material/Settings';
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline'; // Replaces HelpCircle
+import LogoutIcon from '@mui/icons-material/Logout';
+// import HelpOutlineIcon from '@mui/icons-material/HelpOutline'; // Replaces HelpCircle (removed Help)
 // import EmailIcon from '@mui/icons-material/Email'; // Replaces Mail
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'; // Replaces PlusCircle
 import DeleteIcon from '@mui/icons-material/Delete'; // For removing items
@@ -73,7 +74,7 @@ interface Client {
 export function CreateInvoiceScreen() {
   const navigate = useNavigate();
   const location = useLocation();
-  // const { user } = useAuth();
+  const { logout } = useAuth();
   
   // State for form fields
   const [selectedClientId, setSelectedClientId] = useState<string>('');
@@ -262,7 +263,7 @@ export function CreateInvoiceScreen() {
        </Toolbar>
        {/* Nav Items */}
        <List sx={{ flexGrow: 1 }}>
-         {['Dashboard', 'Invoices', 'Add Client', 'Products'].map((text, index) => (
+         {['Dashboard', 'Invoices', 'Add Client'].map((text, index) => (
            <ListItem key={text} disablePadding sx={{ mb: 0.5 }}>
              <ListItemButton
                selected={text === 'Invoices'}
@@ -287,17 +288,31 @@ export function CreateInvoiceScreen() {
        {/* Bottom Actions */}
        <Box sx={{ mt: 'auto' }}>
             <List dense>
-                 {['Settings', 'Help'].map((text, index) => (
-                   <ListItem key={text} disablePadding>
-                     <ListItemButton sx={{ borderRadius: 1 }}>
-                       <ListItemIcon sx={{ minWidth: 36 }}>
-                         {index === 0 && <SettingsIcon />}
-                         {index === 1 && <HelpOutlineIcon />}
-                       </ListItemIcon>
-                       <ListItemText primary={text} />
-                     </ListItemButton>
-                   </ListItem>
-                 ))}
+              <ListItem disablePadding>
+                <ListItemButton 
+                  sx={{ borderRadius: 1 }}
+                  onClick={() => navigate('/profile')}
+                >
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    <SettingsIcon />
+                  </ListItemIcon>
+                  <ListItemText primary="Settings" />
+                </ListItemButton>
+              </ListItem>
+              <ListItem disablePadding>
+                <ListItemButton 
+                  sx={{ borderRadius: 1 }}
+                  onClick={() => {
+                    logout();
+                    navigate('/login');
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    <LogoutIcon />
+                  </ListItemIcon>
+                  <ListItemText primary="Logout" />
+                </ListItemButton>
+              </ListItem>
             </List>
        </Box>
      </Box>

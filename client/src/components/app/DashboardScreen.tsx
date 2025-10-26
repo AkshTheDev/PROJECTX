@@ -389,7 +389,7 @@ export function DashboardScreen() {
             <Box sx={{ flex: '1 1 300px', minWidth: 0 }}>
               <StatCard
                 title="Total Invoices"
-                value={stats?.invoiceCount.toLocaleString() ?? '...'}
+                value={stats?.invoiceCount?.toLocaleString() ?? '0'}
                 icon={<TrendingUpIcon color="success" />}
                 isLoading={isLoadingStats}
               />
@@ -397,7 +397,7 @@ export function DashboardScreen() {
             <Box sx={{ flex: '1 1 300px', minWidth: 0 }}>
               <StatCard
                 title="Pending Payments"
-                value={`₹${stats?.totalOutstanding.toLocaleString() ?? '...'}`}
+                value={`₹${stats?.totalOutstanding?.toLocaleString() ?? '0'}`}
                 icon={<HourglassTopIcon color="warning" />}
                 isLoading={isLoadingStats}
               />
@@ -567,7 +567,7 @@ export function DashboardScreen() {
                         </TableCell>
                         <TableCell>{invoice.clientName}</TableCell>
                         <TableCell sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>{invoice.date}</TableCell>
-                        <TableCell>₹{invoice.amount.toLocaleString()}</TableCell>
+                        <TableCell>₹{invoice.amount?.toLocaleString() ?? '0'}</TableCell>
                         <TableCell>
                           <Chip label={invoice.status} color={getStatusChipColor(invoice.status)} size="small" />
                         </TableCell>
