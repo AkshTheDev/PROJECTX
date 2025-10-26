@@ -22,7 +22,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
-import GoogleIcon from '@mui/icons-material/Google'; // Or use an img tag if you prefer the exact logo
+// Google auth removed
 
 // Define styles (reusing from SignUpScreen where applicable)
 const styles = {
@@ -230,21 +230,7 @@ export function LoginScreen() {
                 {mutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Login'}
               </Button>
 
-              <Box sx={styles.dividerContainer}>
-                <Divider sx={{ flexGrow: 1 }} />
-                <Typography variant="body2" color="text.secondary">or</Typography>
-                <Divider sx={{ flexGrow: 1 }} />
-              </Box>
-
-              <Button
-                type="button"
-                fullWidth
-                variant="outlined"
-                startIcon={<GoogleIcon />} // Use MUI Google icon or img tag
-                sx={{ py: 1.5, textTransform: 'none', fontSize: '1rem', fontWeight: 500 }}
-              >
-                Continue with Google
-              </Button>
+              { /* Google auth button removed */ }
             </Box>
           </Box>
            <Box sx={{ mt: 8, textAlign: 'center' }}>

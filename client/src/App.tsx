@@ -17,6 +17,7 @@ function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignUpPage />} />
+  { /* Google OAuth callback removed */ }
         
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<Navigate to="/dashboard" />} />

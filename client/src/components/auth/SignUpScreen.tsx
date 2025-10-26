@@ -22,7 +22,7 @@ import Grid from '@mui/material/Grid';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
-import PhoneIcon from '@mui/icons-material/Phone';
+// Google auth removed
 
 // Define styles using MUI's sx prop or objects for better organization
 const styles = {
@@ -249,21 +249,7 @@ export function SignUpScreen() {
                 {mutation.isPending ? <CircularProgress size={24} color="inherit" /> : 'Create Account'}
               </Button>
 
-              <Box sx={styles.dividerContainer}>
-                <Divider sx={{ flexGrow: 1 }} />
-                <Typography variant="body2" color="text.secondary">or</Typography>
-                <Divider sx={{ flexGrow: 1 }} />
-              </Box>
-
-              <Button
-                type="button"
-                fullWidth
-                variant="outlined"
-                startIcon={<PhoneIcon />}
-                sx={{ py: 1.5, textTransform: 'none', fontSize: '1rem', fontWeight: 500 }}
-              >
-                Sign Up with Google
-              </Button>
+              { /* Google auth button removed */ }
 
               {/* Security Badges */}
             </Box>

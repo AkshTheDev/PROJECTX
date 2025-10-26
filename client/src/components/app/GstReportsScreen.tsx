@@ -2,6 +2,11 @@
 import React, { useState } from 'react';
 import api from '@/lib/api';
 import { useQuery } from '@tanstack/react-query';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
+import { styled, alpha } from '@mui/material/styles';
+import InputBase from '@mui/material/InputBase';
 
 // MUI Imports
 import Box from '@mui/material/Box';
@@ -34,7 +39,42 @@ import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import DescriptionIcon from '@mui/icons-material/Description'; // For Excel
 import SearchIcon from '@mui/icons-material/Search';
 import MenuIcon from '@mui/icons-material/Menu';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 // Keep other icons as needed for header if reusing logic
+
+// Styled components for Search Bar
+const Search = styled('div')(({ theme }) => ({
+  position: 'relative',
+  borderRadius: theme.shape.borderRadius,
+  backgroundColor: alpha(theme.palette.common.black, 0.05),
+  '&:hover': {
+    backgroundColor: alpha(theme.palette.common.black, 0.08),
+  },
+  width: '100%',
+  [theme.breakpoints.up('sm')]: {
+    width: '250px',
+  },
+}));
+
+const SearchIconWrapper = styled('div')(({ theme }) => ({
+  padding: theme.spacing(0, 2),
+  height: '100%',
+  position: 'absolute',
+  pointerEvents: 'none',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+}));
+
+const StyledInputBase = styled(InputBase)(({ theme }) => ({
+  color: 'inherit',
+  width: '100%',
+  '& .MuiInputBase-input': {
+    padding: theme.spacing(1, 1, 1, 0),
+    paddingLeft: `calc(1em + ${theme.spacing(4)})`,
+    width: '100%',
+  },
+}));
 
 // Define types for data (Adjust based on your actual API response)
 interface GstSummaryStats {
@@ -153,6 +193,126 @@ export function GstReportsScreen() {
     return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
 
+  // PDF Download Handler
+  const handleDownloadPDF = () => {
+    if (!summary || !details || details.length === 0) return;
+
+    const doc = new jsPDF();
+    const businessName = profile?.business?.name || 'Business Name';
+    const dateRange = `${startDate?.toLocaleDateString() || ''} to ${endDate?.toLocaleDateString() || ''}`;
+
+    // Helper function to format numbers for PDF (without special characters)
+    const formatForPDF = (amount: number) => {
+      return 'Rs. ' + amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    // Title
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('GST Report', 14, 20);
+    
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text(businessName, 14, 28);
+    doc.text(`Period: ${dateRange}`, 14, 34);
+
+    // Summary Table
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Summary', 14, 45);
+
+    autoTable(doc, {
+      startY: 50,
+      head: [['Metric', 'Amount']],
+      body: [
+        ['Total Sales', formatForPDF(summary.totalSales)],
+        ['Total GST Collected', formatForPDF(summary.totalGstCollected)],
+        ['Total Input Tax Credit', formatForPDF(summary.totalInputTaxCredit)],
+        ['Net GST Payable', formatForPDF(summary.netGstPayable)],
+      ],
+      theme: 'grid',
+      headStyles: { fillColor: [66, 139, 202] },
+    });
+
+    // Details Table
+    const finalY = (doc as any).lastAutoTable.finalY || 50;
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Detailed Report', 14, finalY + 10);
+
+    autoTable(doc, {
+      startY: finalY + 15,
+      head: [['Invoice #', 'Date', 'Customer', 'Taxable', 'CGST', 'SGST', 'IGST', 'Total']],
+      body: details.map(row => [
+        row.invoiceNumber,
+        row.date,
+        row.customer,
+        formatForPDF(row.taxableAmount),
+        formatForPDF(row.cgst),
+        formatForPDF(row.sgst),
+        formatForPDF(row.igst),
+        formatForPDF(row.total),
+      ]),
+      theme: 'striped',
+      headStyles: { fillColor: [66, 139, 202] },
+      styles: { fontSize: 8 },
+    });
+
+    // Save PDF
+    const filename = `gst-report_${startDate?.toISOString().split('T')[0]}_${endDate?.toISOString().split('T')[0]}.pdf`;
+    doc.save(filename);
+  };
+
+  // Excel Download Handler
+  const handleDownloadExcel = () => {
+    if (!summary || !details || details.length === 0) return;
+
+    const businessName = profile?.business?.name || 'Business Name';
+    const dateRange = `${startDate?.toLocaleDateString() || ''} to ${endDate?.toLocaleDateString() || ''}`;
+
+    // Summary Sheet
+    const summaryData = [
+      ['GST Report'],
+      [businessName],
+      [`Period: ${dateRange}`],
+      [],
+      ['Summary'],
+      ['Metric', 'Amount'],
+      ['Total Sales', summary.totalSales],
+      ['Total GST Collected', summary.totalGstCollected],
+      ['Total Input Tax Credit', summary.totalInputTaxCredit],
+      ['Net GST Payable', summary.netGstPayable],
+    ];
+
+    // Details Sheet
+    const detailsData = [
+      ['Invoice #', 'Date', 'Customer', 'Taxable Amount', 'CGST', 'SGST', 'IGST', 'Total'],
+      ...details.map(row => [
+        row.invoiceNumber,
+        row.date,
+        row.customer,
+        row.taxableAmount,
+        row.cgst,
+        row.sgst,
+        row.igst,
+        row.total,
+      ]),
+    ];
+
+    // Create workbook
+    const wb = XLSX.utils.book_new();
+    const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+    const wsDetails = XLSX.utils.aoa_to_sheet(detailsData);
+
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+    XLSX.utils.book_append_sheet(wb, wsDetails, 'Details');
+
+    // Save Excel file
+    const filename = `gst-report_${startDate?.toISOString().split('T')[0]}_${endDate?.toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, filename);
+  };
+
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: 'grey.100' }}>
       {/* --- Header (Simplified, adjust if using shared layout) --- */}
@@ -169,16 +329,24 @@ export function GstReportsScreen() {
         <Toolbar sx={{ justifyContent: 'space-between' }}>
           {/* Left Side */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-             {/* Simple Logo Placeholder */}
-            <Typography variant="h6" noWrap component="div" fontWeight="bold" color="primary">
-              GST Invoice
-            </Typography>
-            {/* Navigation Links (Desktop) */}
-            <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 3 }}>
-              <Link href="#" color="inherit" underline="none" sx={{ fontSize: '0.875rem' }}>Dashboard</Link>
-              <Link href="#" color="inherit" underline="none" sx={{ fontSize: '0.875rem' }}>Invoices</Link>
-              <Link href="#" color="primary" underline="none" sx={{ fontSize: '0.875rem', fontWeight: 'bold' }}>Reports</Link>
-              <Link href="#" color="inherit" underline="none" sx={{ fontSize: '0.875rem' }}>Clients</Link>
+             {/* Logo with Icon */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 1,
+                  bgcolor: 'primary.main',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <ReceiptLongIcon sx={{ color: 'white', fontSize: 24 }} />
+              </Box>
+              <Typography variant="h6" noWrap component="div" fontWeight="bold" color="text.primary">
+                GST Invoice
+              </Typography>
             </Box>
           </Box>
 
@@ -193,7 +361,6 @@ export function GstReportsScreen() {
             >
               <MenuIcon />
             </IconButton>
-             {/* <Button variant="contained" size="medium">New Invoice</Button> */}
             <Avatar
               alt={profile?.business?.name || profile?.user?.fullName || profile?.user?.email || 'User'}
               src={profile?.business?.logoUrl || profile?.user?.avatarUrl || undefined}
@@ -201,6 +368,14 @@ export function GstReportsScreen() {
             >
               {(profile?.business?.name?.charAt(0) || profile?.user?.fullName?.charAt(0) || profile?.user?.email?.charAt(0) || 'U')}
             </Avatar>
+            <Box sx={{ display: { xs: 'none', sm: 'flex' }, flexDirection: 'column', alignItems: 'flex-start' }}>
+              <Typography variant="body2" fontWeight="600">
+                {profile?.user?.fullName || profile?.user?.email || 'User'}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {profile?.user?.email || 'user@example.com'}
+              </Typography>
+            </Box>
           </Box>
         </Toolbar>
       </AppBar>
@@ -221,8 +396,22 @@ export function GstReportsScreen() {
               GST Reports
             </Typography>
             <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button variant="outlined" startIcon={<PictureAsPdfIcon />}>Download PDF</Button>
-              <Button variant="outlined" startIcon={<DescriptionIcon />}>Download Excel</Button>
+              <Button 
+                variant="outlined" 
+                startIcon={<PictureAsPdfIcon />}
+                onClick={handleDownloadPDF}
+                disabled={!startDate || !endDate || isLoadingSummary || isLoadingDetails || !details || details.length === 0}
+              >
+                Download PDF
+              </Button>
+              <Button 
+                variant="outlined" 
+                startIcon={<DescriptionIcon />}
+                onClick={handleDownloadExcel}
+                disabled={!startDate || !endDate || isLoadingSummary || isLoadingDetails || !details || details.length === 0}
+              >
+                Download Excel
+              </Button>
             </Box>
           </Box>
 
@@ -295,20 +484,17 @@ export function GstReportsScreen() {
                 <Typography variant="h6" component="h2" fontWeight="bold">
                  Detailed Report
                 </Typography>
-                <TextField
-                  placeholder="Search invoices..."
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon color="action" />
-                      </InputAdornment>
-                    ),
-                  }}
-                  size="small"
-                  sx={{ width: { xs: '100%', sm: '250px' } }}
-                />
+                <Search>
+                  <SearchIconWrapper>
+                    <SearchIcon />
+                  </SearchIconWrapper>
+                  <StyledInputBase
+                    placeholder="Search invoices..."
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    inputProps={{ 'aria-label': 'search' }}
+                  />
+                </Search>
             </Box>
 
             {/* Detailed Report Table */}

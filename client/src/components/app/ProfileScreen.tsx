@@ -25,6 +25,10 @@ import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import Divider from '@mui/material/Divider';
 import Skeleton from '@mui/material/Skeleton';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
 
 // Icon Imports
 import PersonIcon from '@mui/icons-material/Person';
@@ -32,6 +36,8 @@ import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 import LockIcon from '@mui/icons-material/Lock';
 import InfoIcon from '@mui/icons-material/InfoOutlined';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 
 // Define types for profile data
 interface UserProfile {
@@ -90,6 +96,17 @@ const updateBusinessProfileAPI = async (profileData: Partial<BusinessProfile>): 
 export function ProfileScreen() {
   const [activeSection, setActiveSection] = useState('personal');
   const queryClient = useQueryClient();
+
+  // State for change password dialog
+  const [openPasswordDialog, setOpenPasswordDialog] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   // State for form fields - Initialized empty
   const [fullName, setFullName] = useState('');
@@ -172,9 +189,60 @@ export function ProfileScreen() {
     }
   };
 
+  const handleSectionClick = (sectionId: string) => {
+    setActiveSection(sectionId);
+    const element = document.getElementById(sectionId);
+    if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   const handleSaveChanges = () => {
       mutation.mutate(); // Trigger the mutation function
   }
+
+  // Change Password Mutation
+  const changePasswordMutation = useMutation({
+    mutationFn: async () => {
+      setPasswordError('');
+      if (newPassword !== confirmPassword) {
+        throw new Error('Passwords do not match');
+      }
+      if (newPassword.length < 6) {
+        throw new Error('Password must be at least 6 characters');
+      }
+      await api.put('/profile/change-password', {
+        currentPassword,
+        newPassword,
+      });
+    },
+    onSuccess: () => {
+      setPasswordSuccess(true);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setTimeout(() => {
+        setOpenPasswordDialog(false);
+        setPasswordSuccess(false);
+      }, 2000);
+    },
+    onError: (error: any) => {
+      setPasswordError(error.response?.data?.message || error.message || 'Failed to change password');
+    },
+  });
+
+  const handleChangePassword = () => {
+    changePasswordMutation.mutate();
+  };
+
+  const handleClosePasswordDialog = () => {
+    setOpenPasswordDialog(false);
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordError('');
+    setPasswordSuccess(false);
+  };
 
   // Combined loading/error states
   const isLoading = isLoadingUser || isLoadingBusiness;
@@ -205,7 +273,7 @@ export function ProfileScreen() {
                 <ListItemButton
                   key={item.id}
                   selected={activeSection === item.id}
-                  onClick={() => setActiveSection(item.id)}
+                  onClick={() => handleSectionClick(item.id)}
                   sx={{ borderRadius: 1, mb: 0.5 }}
                 >
                   <ListItemIcon sx={{ minWidth: 36, color: activeSection === item.id ? 'primary.main' : 'inherit' }}>
@@ -347,10 +415,9 @@ export function ProfileScreen() {
                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Box>
                                 <Typography fontWeight="medium">Password</Typography>
-                                <Typography variant="body2" color="text.secondary">Last changed on 12 Jan 2024</Typography> {/* Replace with dynamic data */}
+                                <Typography variant="body2" color="text.secondary">Change your password</Typography>
                             </Box>
-                           {/* Add onClick handler for changing password */}
-                           <Button variant="text" size="small" /* onClick={openChangePasswordModal} */>Change Password</Button>
+                           <Button variant="text" size="small" onClick={() => setOpenPasswordDialog(true)}>Change Password</Button>
                        </Box>
                         <Divider />
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -386,6 +453,98 @@ export function ProfileScreen() {
             </Box>
         </Grid>
       </Grid>
+
+      {/* Change Password Dialog */}
+      <Dialog open={openPasswordDialog} onClose={handleClosePasswordDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Change Password</DialogTitle>
+        <DialogContent>
+          {passwordSuccess && (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              Password changed successfully!
+            </Alert>
+          )}
+          {passwordError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {passwordError}
+            </Alert>
+          )}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <TextField
+              label="Current Password"
+              type={showCurrentPassword ? 'text' : 'password'}
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              fullWidth
+              disabled={changePasswordMutation.isPending}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      edge="end"
+                    >
+                      {showCurrentPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <TextField
+              label="New Password"
+              type={showNewPassword ? 'text' : 'password'}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              fullWidth
+              disabled={changePasswordMutation.isPending}
+              helperText="Password must be at least 6 characters"
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      edge="end"
+                    >
+                      {showNewPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <TextField
+              label="Confirm New Password"
+              type={showConfirmPassword ? 'text' : 'password'}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              fullWidth
+              disabled={changePasswordMutation.isPending}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      edge="end"
+                    >
+                      {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClosePasswordDialog} disabled={changePasswordMutation.isPending}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleChangePassword}
+            variant="contained"
+            disabled={changePasswordMutation.isPending || !currentPassword || !newPassword || !confirmPassword}
+          >
+            {changePasswordMutation.isPending ? <CircularProgress size={24} /> : 'Change Password'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
+import { styled, alpha } from '@mui/material/styles';
+import InputBase from '@mui/material/InputBase';
 
 // MUI Imports
 import Box from '@mui/material/Box';
@@ -69,8 +71,45 @@ import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
 import DownloadIcon from '@mui/icons-material/Download';
 import DeleteIcon from '@mui/icons-material/Delete';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 const drawerWidth = 256;
+
+// Styled components for Search Bar
+const Search = styled('div')(({ theme }) => ({
+  position: 'relative',
+  borderRadius: theme.shape.borderRadius,
+  backgroundColor: alpha(theme.palette.common.black, 0.05),
+  '&:hover': {
+    backgroundColor: alpha(theme.palette.common.black, 0.08),
+  },
+  marginRight: theme.spacing(2),
+  width: '100%',
+  [theme.breakpoints.up('sm')]: {
+    width: 'auto',
+    minWidth: '200px',
+  },
+}));
+
+const SearchIconWrapper = styled('div')(({ theme }) => ({
+  padding: theme.spacing(0, 2),
+  height: '100%',
+  position: 'absolute',
+  pointerEvents: 'none',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+}));
+
+const StyledInputBase = styled(InputBase)(({ theme }) => ({
+  color: 'inherit',
+  width: '100%',
+  '& .MuiInputBase-input': {
+    padding: theme.spacing(1, 1, 1, 0),
+    paddingLeft: `calc(1em + ${theme.spacing(4)})`,
+    width: '100%',
+  },
+}));
 
 // Define types for data
 interface InvoiceSummaryStats {
@@ -161,6 +200,21 @@ export function InvoiceHistoryScreen() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  // Check for overdue invoices on mount
+  useEffect(() => {
+    const checkOverdue = async () => {
+      try {
+        await api.post('/invoices/check-overdue');
+        // Refetch invoices and summary after updating overdue status
+        queryClient.invalidateQueries({ queryKey: ['invoices'] });
+        queryClient.invalidateQueries({ queryKey: ['invoiceSummary'] });
+      } catch (error) {
+        console.error('Error checking overdue invoices:', error);
+      }
+    };
+    checkOverdue();
+  }, [queryClient]);
+
   // Fetch Summary Stats
   const { data: summary, isLoading: isLoadingSummary } = useQuery({
     queryKey: ['invoiceSummary'],
@@ -194,6 +248,21 @@ export function InvoiceHistoryScreen() {
     },
     onError: (error: any) => {
       setErrorMessage(error.response?.data?.message || 'Failed to delete invoice');
+      setShowError(true);
+    },
+  });
+
+  const markAsPaidMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.put(`/invoices/${id}`, { status: 'PAID' });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['invoiceSummary'] });
+      setShowSuccess(true);
+    },
+    onError: (error: any) => {
+      setErrorMessage(error.response?.data?.message || 'Failed to mark invoice as paid');
       setShowError(true);
     },
   });
@@ -404,15 +473,17 @@ export function InvoiceHistoryScreen() {
             </IconButton>
 
             {/* Search Bar */}
-            <TextField
-              placeholder="Search invoices..."
-              value={searchQuery}
-              onChange={handleSearchChange}
-              sx={{ mr: 2, minWidth: 200 }}
-              InputProps={{
-                startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />,
-              }}
-            />
+            <Search>
+              <SearchIconWrapper>
+                <SearchIcon />
+              </SearchIconWrapper>
+              <StyledInputBase
+                placeholder="Search invoices..."
+                value={searchQuery}
+                onChange={handleSearchChange}
+                inputProps={{ 'aria-label': 'search' }}
+              />
+            </Search>
 
             <Box sx={{ flexGrow: 1 }} />
 
@@ -678,6 +749,22 @@ export function InvoiceHistoryScreen() {
           <ListItemText>Duplicate</ListItemText>
         </MenuItem>
         <Divider />
+        {selectedInvoice && selectedInvoice.status !== 'PAID' && (
+          <>
+            <MenuItem onClick={() => {
+              if (selectedInvoice) {
+                markAsPaidMutation.mutate(selectedInvoice._id);
+                handleActionClose();
+              }
+            }} sx={{ color: 'success.main' }}>
+              <ListItemIcon>
+                <CheckCircleIcon fontSize="small" color="success" />
+              </ListItemIcon>
+              <ListItemText>Mark as Paid</ListItemText>
+            </MenuItem>
+            <Divider />
+          </>
+        )}
         <MenuItem onClick={handleDownloadInvoice}>
           <ListItemIcon>
             <DownloadIcon fontSize="small" />

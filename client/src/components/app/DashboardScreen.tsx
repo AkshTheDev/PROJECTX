@@ -1,7 +1,7 @@
 // client/src/components/app/DashboardScreen.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '@/lib/api';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -189,6 +189,22 @@ export function DashboardScreen() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  // Check for overdue invoices on mount
+  useEffect(() => {
+    const checkOverdue = async () => {
+      try {
+        await api.post('/invoices/check-overdue');
+        // Refetch stats after updating overdue status
+        queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
+        queryClient.invalidateQueries({ queryKey: ['recentInvoices'] });
+      } catch (error) {
+        console.error('Error checking overdue invoices:', error);
+      }
+    };
+    checkOverdue();
+  }, [queryClient]);
 
   const { data: stats, isLoading: isLoadingStats } = useQuery({
     queryKey: ['dashboardStats'],

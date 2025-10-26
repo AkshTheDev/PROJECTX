@@ -86,7 +86,7 @@ export function CreateInvoiceScreen() {
   const [invoiceDate, setInvoiceDate] = useState<Date | null>(new Date());
   const [dueDate, setDueDate] = useState<Date | null>(new Date(Date.now() + 15 * 24 * 60 * 60 * 1000)); // 15 days from now
   const [notes, setNotes] = useState('');
-  // const [status, setStatus] = useState<'DRAFT' | 'PENDING'>('DRAFT');
+  const [status, setStatus] = useState<'DRAFT' | 'PENDING' | 'UNPAID'>('DRAFT');
   const [showSuccess, setShowSuccess] = useState(false);
   const [showError, setShowError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -183,7 +183,7 @@ export function CreateInvoiceScreen() {
   };
 
   // Handle form submission
-  const handleSubmit = async (isDraft: boolean = false) => {
+  const handleSubmit = async () => {
     if (!selectedClientId) {
       setErrorMessage('Please select a client');
       setShowError(true);
@@ -200,7 +200,7 @@ export function CreateInvoiceScreen() {
       invoiceNumber,
       invoiceDate: invoiceDate?.toISOString(),
       dueDate: dueDate?.toISOString(),
-      status: isDraft ? 'DRAFT' : 'PENDING',
+      status: status,
       notes,
       subtotal: calculateSubtotal(),
       cgstAmount: calculateGst().cgst,
@@ -256,7 +256,19 @@ export function CreateInvoiceScreen() {
      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', p: 2, pt: 0 }}>
        {/* Logo/Title */}
        <Toolbar sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, px: 0 }}>
-         <ReceiptLongIcon color="primary" sx={{ fontSize: 40 }} />
+         <Box
+           sx={{
+             width: 40,
+             height: 40,
+             borderRadius: 1,
+             bgcolor: 'primary.main',
+             display: 'flex',
+             alignItems: 'center',
+             justifyContent: 'center',
+           }}
+         >
+           <ReceiptLongIcon sx={{ color: 'white', fontSize: 24 }} />
+         </Box>
          <Box>
             <Typography variant="subtitle1" fontWeight="bold">GST Invoice</Typography>
          </Box>
@@ -428,7 +440,7 @@ export function CreateInvoiceScreen() {
                <Paper elevation={1} sx={{ p: 3, borderRadius: 2 }}>
                   <Typography variant="h6" component="h2" fontWeight="bold" sx={{ mb: 2 }}>Invoice Details</Typography>
                    <Grid container spacing={2}>
-                      <Grid item xs={12} sm={4}>
+                      <Grid item xs={12} sm={3}>
                           <TextField
                               label="Invoice Number"
                               fullWidth
@@ -436,7 +448,7 @@ export function CreateInvoiceScreen() {
                               onChange={(e) => setInvoiceNumber(e.target.value)}
                           />
                       </Grid>
-                      <Grid item xs={12} sm={4}>
+                      <Grid item xs={12} sm={3}>
                           <DatePicker
                               label="Invoice Date"
                               value={invoiceDate}
@@ -444,7 +456,7 @@ export function CreateInvoiceScreen() {
                               slotProps={{ textField: { fullWidth: true } }} // Make input full width
                           />
                       </Grid>
-                      <Grid item xs={12} sm={4}>
+                      <Grid item xs={12} sm={3}>
                           <DatePicker
                               label="Due Date"
                               value={dueDate}
@@ -452,6 +464,19 @@ export function CreateInvoiceScreen() {
                               slotProps={{ textField: { fullWidth: true } }}
                               minDate={invoiceDate ?? undefined}
                           />
+                      </Grid>
+                      <Grid item xs={12} sm={3}>
+                          <TextField
+                              label="Status"
+                              fullWidth
+                              select
+                              value={status}
+                              onChange={(e) => setStatus(e.target.value as 'DRAFT' | 'PENDING' | 'UNPAID')}
+                          >
+                              <MenuItem value="DRAFT">Draft</MenuItem>
+                              <MenuItem value="PENDING">Pending</MenuItem>
+                              <MenuItem value="UNPAID">Unpaid</MenuItem>
+                          </TextField>
                       </Grid>
                    </Grid>
                </Paper>
