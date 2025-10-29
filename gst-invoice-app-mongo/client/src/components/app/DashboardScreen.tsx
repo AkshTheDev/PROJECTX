@@ -152,7 +152,7 @@ const fetchRecentInvoices = async (): Promise<RecentInvoice[]> => {
   return data.invoices?.map((invoice: any) => ({
     id: invoice._id,
     invoiceNumber: invoice.invoiceNumber,
-    clientName: invoice.client?.name || 'Unknown Client',
+    clientName: invoice.client?.name || 'Deleted Client',
     date: new Date(invoice.invoiceDate).toLocaleDateString(),
     amount: invoice.total,
     status: invoice.status
