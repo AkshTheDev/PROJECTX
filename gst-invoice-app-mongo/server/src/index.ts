@@ -10,30 +10,29 @@ connectDB();
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-// Allow multiple origins for local development and production
-const allowedOrigins = [
-  process.env.CLIENT_URL || "http://localhost:5173",
-  "http://localhost:5173",
-  "http://localhost:5174",
-  "https://invorizz.vercel.app"
-];
-
+// CORS configuration
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    // Allow if origin is in allowedOrigins list
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } 
-    // Allow all Vercel preview deployments (*.vercel.app)
-    else if (origin && origin.includes('.vercel.app')) {
-      callback(null, true);
+    // Allow localhost for development
+    if (origin.includes('localhost')) {
+      return callback(null, true);
     }
-    else {
-      callback(new Error('Not allowed by CORS'));
+    
+    // Allow all Vercel deployments
+    if (origin.includes('vercel.app')) {
+      return callback(null, true);
     }
+    
+    // Allow specific production URL if set
+    if (process.env.CLIENT_URL && origin === process.env.CLIENT_URL) {
+      return callback(null, true);
+    }
+    
+    // Reject all others
+    callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
 }));
