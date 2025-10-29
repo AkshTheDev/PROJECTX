@@ -47,9 +47,6 @@ JWT_SECRET=your_jwt_secret_here
 MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/dbname
 PORT=8000
 CLIENT_URL=http://localhost:5173
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-GOOGLE_CALLBACK_URL=http://localhost:8000/api/auth/google/callback
 ```
 
 #### 1.3 Verify CORS Configuration
@@ -61,7 +58,14 @@ app.use(cors({
 }));
 ```
 
-#### 1.4 Ensure Build Script Works
+#### 1.3 Verify Build Works
+```bash
+cd client
+npm run build
+```
+This should create a `dist/` folder.
+
+#### 1.4 Ensure `client/vercel.json` Exists
 ```bash
 cd server
 npm run build
@@ -110,9 +114,6 @@ git push -u origin main
 | `MONGO_URI` | `mongodb+srv://akshanshsinha570_db_user:WkFq03adaxVAlI7g@gstapp.cyz1mwz.mongodb.net/?appName=GSTAPP` |
 | `PORT` | `8000` |
 | `CLIENT_URL` | (leave blank for now, update after Vercel deployment) |
-| `GOOGLE_CLIENT_ID` | `22700545000-ldt0opv8j6cfprer1sioh6hlne8unoba.apps.googleusercontent.com` |
-| `GOOGLE_CLIENT_SECRET` | `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` |
-| `GOOGLE_CALLBACK_URL` | (update after getting Render URL) |
 
 5. **Click** "Create Web Service"
 6. **Wait** for deployment (~5–10 minutes)
@@ -140,12 +141,12 @@ const api = axios.create({
 VITE_API_BASE=http://localhost:8000/api
 ```
 
-#### 1.3 Create `client/.env.production`
+#### 1.3 Verify Build Works
 ```bash
-VITE_API_BASE=https://your-render-backend-url.onrender.com/api
+cd client
+npm run build
 ```
-
-#### 1.4 Create `client/vercel.json`
+This should create a `dist/` folder.
 ```json
 {
   "rewrites": [
@@ -209,36 +210,17 @@ git push -u origin main
 
 1. Go to **Render Dashboard** → Your backend service
 2. Navigate to **Environment** tab
-3. **Update** these variables:
+3. **Update** this variable:
 
 | Key | New Value |
 |-----|-----------|
 | `CLIENT_URL` | `https://gst-invoice-app.vercel.app` |
-| `GOOGLE_CALLBACK_URL` | `https://gst-invoice-backend.onrender.com/api/auth/google/callback` |
 
 4. **Save Changes** (triggers automatic redeploy)
 
 ---
 
-### Step 2: Update Google OAuth Redirect URIs
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Navigate to **APIs & Services** → **Credentials**
-3. Click your OAuth 2.0 Client ID
-4. Under **Authorized redirect URIs**, add:
-   ```
-   https://gst-invoice-backend.onrender.com/api/auth/google/callback
-   ```
-5. Under **Authorized JavaScript origins**, add:
-   ```
-   https://gst-invoice-app.vercel.app
-   https://gst-invoice-backend.onrender.com
-   ```
-6. **Save**
-
----
-
-### Step 3: Test Your Deployed Application
+## ✅ Part 5: Testing Your Deployed Application
 
 ✅ Visit your Vercel URL: `https://gst-invoice-app.vercel.app`
 
@@ -249,11 +231,6 @@ git push -u origin main
 ✅ **Test Sign In**
 - Log in with created account
 - Check JWT token in localStorage
-
-✅ **Test Google Sign In**
-- Click "Continue with Google"
-- Complete OAuth flow
-- Verify redirect back to dashboard
 
 ✅ **Test Invoice Creation**
 - Create a new client
@@ -305,11 +282,6 @@ git push -u origin main
 - ✅ Confirm `vercel.json` exists with rewrites
 - ✅ Redeploy on Vercel
 
-**Problem: Google OAuth Not Working**
-- ✅ Verify redirect URIs in Google Console
-- ✅ Check callback URL in Render environment
-- ✅ Ensure HTTPS (not HTTP) for production
-
 **Problem: Build Fails on Vercel**
 - ✅ Run `npm run build` locally
 - ✅ Fix TypeScript errors
@@ -324,9 +296,6 @@ git push -u origin main
 - ✅ `MONGO_URI`
 - ✅ `PORT`
 - ✅ `CLIENT_URL`
-- ✅ `GOOGLE_CLIENT_ID`
-- ✅ `GOOGLE_CLIENT_SECRET`
-- ✅ `GOOGLE_CALLBACK_URL`
 
 ### Frontend (Vercel)
 - ✅ `VITE_API_BASE`
@@ -381,7 +350,7 @@ git push -u origin main
 ### Backend Deployment
 - ✅ Render account created
 - ✅ Service connected to GitHub repo
-- ✅ All 7 environment variables added
+- ✅ All 4 environment variables added
 - ✅ Build successful
 - ✅ Backend URL accessible
 - ✅ Test endpoint: `https://your-backend.onrender.com/api/health`
@@ -395,11 +364,9 @@ git push -u origin main
 
 ### Post-Deployment
 - ✅ `CLIENT_URL` updated in Render
-- ✅ Google OAuth redirect URIs updated
 - ✅ CORS working (no console errors)
 - ✅ Signup tested ✅
 - ✅ Login tested ✅
-- ✅ Google OAuth tested ✅
 - ✅ Invoice creation tested ✅
 - ✅ PDF export tested ✅
 - ✅ All API calls successful ✅

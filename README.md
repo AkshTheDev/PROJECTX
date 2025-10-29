@@ -60,8 +60,8 @@ Then on [Vercel Dashboard](https://vercel.com):
 
 ### Environment Variables
 Both services support environment variables via `.env` files:
-- `./gst-invoice-app-mongo/client/.env` (local) and `.env.production` (deployment)
-- `./gst-invoice-app-mongo/server/.env`
+- `./gst-invoice-app-mongo/client/.env.local` (local development)
+- `./gst-invoice-app-mongo/server/.env` (server configuration)
 
 ### Benefits of Vercel + Render
 - **Automatic HTTPS:** Both platforms provide SSL certificates
