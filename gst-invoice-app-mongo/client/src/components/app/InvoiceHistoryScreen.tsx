@@ -672,7 +672,7 @@ export function InvoiceHistoryScreen() {
                           sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
                         >
                           <TableCell component="th" scope="row">{invoice.invoiceNumber}</TableCell>
-                          <TableCell>{invoice.client.name}</TableCell>
+                          <TableCell>{invoice.client?.name || 'Deleted Client'}</TableCell>
                           <TableCell>{new Date(invoice.invoiceDate).toLocaleDateString()}</TableCell>
                           <TableCell>{new Date(invoice.dueDate).toLocaleDateString()}</TableCell>
                           <TableCell align="right">{invoice.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
