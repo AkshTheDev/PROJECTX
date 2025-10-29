@@ -10,10 +10,12 @@ connectDB();
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-// Allow both port 5173 and 5174 for local development
+// Allow multiple origins for local development and production
 const allowedOrigins = [
   process.env.CLIENT_URL || "http://localhost:5173",
-  "http://localhost:5174"
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "https://invorizz.vercel.app"
 ];
 
 app.use(cors({
