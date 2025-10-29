@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1d4ed8;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="64" height="64" fill="url(#blueGrad)" rx="12"/>
+  
+  <!-- Invoice document shape -->
+  <rect x="18" y="14" width="28" height="36" fill="white" rx="2"/>
+  
+  <!-- GST text or symbol -->
+  <text x="32" y="28" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#1d4ed8" text-anchor="middle">GST</text>
+  
+  <!-- Invoice lines -->
+  <line x1="22" y1="34" x2="42" y2="34" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="22" y1="38" x2="42" y2="38" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="22" y1="42" x2="36" y2="42" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round"/>
+  
+  <!-- Rupee symbol or amount indicator -->
+  <circle cx="24" cy="46" r="1.5" fill="#3b82f6"/>
+  <text x="28" y="48" font-family="Arial, sans-serif" font-size="6" font-weight="bold" fill="#1d4ed8">₹</text>
+</svg>
