@@ -270,7 +270,7 @@ export function CreateInvoiceScreen() {
            <ReceiptLongIcon sx={{ color: 'white', fontSize: 24 }} />
          </Box>
          <Box>
-            <Typography variant="subtitle1" fontWeight="bold">GST Invoice</Typography>
+            <Typography variant="subtitle1" fontWeight="bold">InvoWiz</Typography>
          </Box>
        </Toolbar>
        {/* Nav Items */}

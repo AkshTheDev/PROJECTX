@@ -345,7 +345,7 @@ export function GstReportsScreen() {
                 <ReceiptLongIcon sx={{ color: 'white', fontSize: 24 }} />
               </Box>
               <Typography variant="h6" noWrap component="div" fontWeight="bold" color="text.primary">
-                GST Invoice
+                InvoWiz
               </Typography>
             </Box>
           </Box>

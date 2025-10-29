@@ -380,7 +380,7 @@ export function InvoiceHistoryScreen() {
       <Toolbar sx={{ display: 'flex', alignItems: 'center', gap: 1, px: [2] }}>
         <ReceiptLongIcon color="primary" sx={{ fontSize: 30 }}/>
         <Typography variant="h6" noWrap component="div" fontWeight="bold">
-          GST Invoice
+          InvoWiz
         </Typography>
       </Toolbar>
       <List sx={{ flexGrow: 1 }}>

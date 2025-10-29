@@ -149,7 +149,7 @@ export function SignUpScreen() {
             <Link href="#" sx={styles.logoLink}>
               <ReceiptLongIcon sx={{ fontSize: '32px', color: 'primary.main' }} />
               <Typography variant="h5" component="span" fontWeight="bold">
-                Biz-Invoice
+                InvoWiz
               </Typography>
             </Link>
           </Box>
