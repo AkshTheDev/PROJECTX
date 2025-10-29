@@ -5,7 +5,7 @@ services:
     runtime: node
     plan: free
     rootDir: gst-invoice-app-mongo/server
-    buildCommand: npm ci && npm run build
+    buildCommand: npm install && npm run build
     startCommand: npm run start
     autoDeploy: true
     envVars:
@@ -15,3 +15,9 @@ services:
         generateValue: true
       - key: CLIENT_URL
         value: # Set to your Vercel URL after client deploy
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
