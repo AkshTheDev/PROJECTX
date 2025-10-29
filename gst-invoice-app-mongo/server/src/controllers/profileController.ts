@@ -24,6 +24,40 @@ export const getProfile: RequestHandler = async (req, res) => {
     }
 };
 
+// --- Upload Avatar ---
+export const uploadAvatar: RequestHandler = async (req, res) => {
+    const { userId } = (req as AuthRequest);
+    
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'No file uploaded' });
+        }
+
+        // Cloudinary URL is available in req.file.path
+        const avatarUrl = req.file.path;
+
+        // Update user's avatarUrl in database
+        const user = await User.findByIdAndUpdate(
+            userId,
+            { avatarUrl },
+            { new: true }
+        ).select('-passwordHash');
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.json({ 
+            message: 'Avatar uploaded successfully',
+            avatarUrl: user.avatarUrl 
+        });
+
+    } catch (error) {
+        console.error("Upload Avatar Error:", error);
+        res.status(500).json({ message: 'Server error uploading avatar' });
+    }
+};
+
 // --- Update User Profile ---
 export const updateUserProfile: RequestHandler = async (req, res) => {
     const { userId } = (req as AuthRequest);

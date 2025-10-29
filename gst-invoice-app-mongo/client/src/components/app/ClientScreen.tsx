@@ -384,6 +384,7 @@ export function ClientScreen() {
               </IconButton>
               <Avatar
                 alt={user?.fullName || user?.email || 'User'}
+                src={user?.avatarUrl}
                 sx={{ width: 40, height: 40, ml: 1 }}
               >
                 {user?.fullName?.charAt(0) || user?.email?.charAt(0) || 'U'}

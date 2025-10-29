@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/context/AuthContext';
 
 // MUI Imports
 import Box from '@mui/material/Box';
@@ -96,6 +97,7 @@ const updateBusinessProfileAPI = async (profileData: Partial<BusinessProfile>): 
 export function ProfileScreen() {
   const [activeSection, setActiveSection] = useState('personal');
   const queryClient = useQueryClient();
+  const { refreshUser } = useAuth();
 
   // State for change password dialog
   const [openPasswordDialog, setOpenPasswordDialog] = useState(false);
@@ -119,6 +121,11 @@ export function ProfileScreen() {
   const [gstin, setGstin] = useState('');
   const [businessLogoUrl, setBusinessLogoUrl] = useState('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+
+  // State for avatar upload
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   // Fetch User Profile Data
   const { data: userProfile, isLoading: isLoadingUser, isError: isErrorUser } = useQuery({
@@ -244,6 +251,69 @@ export function ProfileScreen() {
     setPasswordSuccess(false);
   };
 
+  // Handle avatar file selection
+  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+      }
+      // Validate file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size must be less than 5MB');
+        return;
+      }
+      
+      setSelectedFile(file);
+      
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+      
+      // Auto-upload the file
+      handleAvatarUpload(file);
+    }
+  };
+
+  // Handle avatar upload to server
+  const handleAvatarUpload = async (file: File) => {
+    setUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append('avatar', file);
+
+      const response = await api.post('/profile/upload-avatar', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      // Update avatar URL with the uploaded image URL
+      setAvatarUrl(response.data.avatarUrl);
+      
+      // Invalidate query to refetch profile
+      queryClient.invalidateQueries({ queryKey: ['userProfile'] });
+      
+      // Refresh AuthContext user to update header avatars
+      await refreshUser();
+      
+      alert('Profile photo updated successfully!');
+    } catch (error: any) {
+      console.error('Avatar upload error:', error);
+      alert(error.response?.data?.message || 'Failed to upload avatar');
+      // Reset preview on error
+      setPreviewUrl('');
+      setSelectedFile(null);
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
   // Combined loading/error states
   const isLoading = isLoadingUser || isLoadingBusiness;
   const isError = isErrorUser || isErrorBusiness;
@@ -313,7 +383,25 @@ export function ProfileScreen() {
                         {isLoading ? (
                             <Skeleton variant="circular" width={96} height={96} />
                         ) : (
-                            <Avatar src={avatarUrl} sx={{ width: 96, height: 96 }}>RS</Avatar> // Fallback initials
+                            <Box sx={{ position: 'relative' }}>
+                              <Avatar 
+                                src={previewUrl || avatarUrl} 
+                                sx={{ width: 96, height: 96 }}
+                              >
+                                {fullName?.charAt(0)?.toUpperCase() || 'U'}
+                              </Avatar>
+                              {uploadingAvatar && (
+                                <CircularProgress
+                                  size={96}
+                                  sx={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    zIndex: 1,
+                                  }}
+                                />
+                              )}
+                            </Box>
                         )}
                         <Box>
                             <Typography variant="h5" component="div" fontWeight="bold">
@@ -324,9 +412,21 @@ export function ProfileScreen() {
                             </Typography>
                         </Box>
                      </Box>
-                     <Button component="label" variant="outlined" startIcon={<CloudUploadIcon />} size="small">
-                        Upload Picture
-                        <input type="file" hidden accept="image/*" /* onChange={handleAvatarUpload} */ />
+                     <Button 
+                       component="label" 
+                       variant="outlined" 
+                       startIcon={<CloudUploadIcon />} 
+                       size="small"
+                       disabled={uploadingAvatar}
+                     >
+                        {uploadingAvatar ? 'Uploading...' : 'Upload Picture'}
+                        <input 
+                          type="file" 
+                          hidden 
+                          accept="image/*" 
+                          onChange={handleAvatarChange}
+                          disabled={uploadingAvatar}
+                        />
                      </Button>
                  </Box>
                  <Grid container spacing={2}>

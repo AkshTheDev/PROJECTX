@@ -15,6 +15,7 @@
     user: User | null;
     setToken: (token: string | null) => void;
     logout: () => void;
+    refreshUser: () => Promise<void>;
     isAuthenticated: boolean;
     isLoading: boolean;
   }
@@ -49,6 +50,17 @@
       setToken(null);
     };
 
+    const refreshUser = async () => {
+      if (token) {
+        try {
+          const response = await api.get('/profile');
+          setUser(response.data.user);
+        } catch (error) {
+          console.error('Failed to refresh user profile:', error);
+        }
+      }
+    };
+
     const isAuthenticated = !!token;
 
     // Fetch user profile when token changes
@@ -76,7 +88,7 @@
     }, [token]);
 
     return (
-      <AuthContext.Provider value={{ token, user, setToken, logout, isAuthenticated, isLoading }}>
+      <AuthContext.Provider value={{ token, user, setToken, logout, refreshUser, isAuthenticated, isLoading }}>
         {children}
       </AuthContext.Provider>
     );
